@@ -1,0 +1,63 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+
+# Build
+dist
+coverage
+build
+*.tsbuildinfo
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.github
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Tests
+test
+__tests__
+coverage
+*.test.ts
+*.spec.ts
+
+# Logs
+logs
+*.log
+
+# Temp
+tmp
+temp
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+README.md
+CHANGELOG.md
+LICENSE
+docs
+
+# Docker
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# CI
+.github
+.gitlab-ci.yml
+.travis.yml
