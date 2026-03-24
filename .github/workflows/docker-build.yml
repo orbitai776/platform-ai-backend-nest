@@ -76,7 +76,7 @@ jobs:
               --restart unless-stopped \
               -p $PORT:3000 \
               -e NODE_ENV=$ENV \
-              -e PORT=$PORT \
+              -e PORT=3000 \
               --log-opt max-size=10m \
               --log-opt max-file=3 \
               ghcr.io/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
