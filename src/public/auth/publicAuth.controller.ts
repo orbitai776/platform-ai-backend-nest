@@ -18,4 +18,13 @@ export class PublicAuthController {
       this.errorHandler.checkError(error)
     }
   }
+
+  @Get('/redis')
+  async getAllTokensRedis(@Request() req: any) {
+    try {
+      return await this.publicAuthService.getAllTokensRedis();
+    } catch (error) {
+      this.errorHandler.checkError(error)
+    }
+  }
 }
