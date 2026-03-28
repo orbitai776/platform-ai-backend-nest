@@ -88,7 +88,7 @@ export class PublicAuthService {
       userId: decodedToken.uid,
       idToken: idToken,
       accessToken: customAccessToken,
-      expiresIn: 3600,
+      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
       metadata: { deviceInfo: "defaultDevice", ipAddress: "0.0.0.0" }
     }
 
