@@ -23,7 +23,7 @@ export class TokenService {
    * Build key: {env}:{userId}
    */
   private buildKey(env: string, userId: string): string {
-    return `${env}:${userId}`;
+    return `${env}:uid:${userId}`;
   }
 
   /**
@@ -50,7 +50,7 @@ export class TokenService {
 
     const key = this.buildKey(env, userId);
     await this.redisService.setex(key, expiresIn, JSON.stringify(tokenData));
-    
+
     this.logger.log(`Token saved: ${key}, expires in ${expiresIn}s`);
   }
 
@@ -162,11 +162,24 @@ export class TokenService {
     this.logger.log(`Token deleted: ${key}`);
   }
 
+  async deleteAllTokens(env: string): Promise<number> {
+    const pattern = `${env}:*`;
+    const keys = await this.redisService.keys(pattern);
+    let count = 0;
+
+    for (const key of keys) {
+      await this.redisService.del(key);
+      count++;
+    }
+
+    return count;
+  }
+
   /**
    * Get all tokens by env
    */
   async getAllTokens(env: string): Promise<Record<string, TokenData>> {
-    const pattern = `${env}:*`;
+    const pattern = `${env}:uid:*`;
     const keys = await this.redisService.keys(pattern);
     const result: Record<string, TokenData> = {};
 
@@ -174,11 +187,7 @@ export class TokenService {
       const data = await this.redisService.get(key);
       if (data) {
         try {
-          const userId = key.replace(`${env}:`, '');
-          const tokenData: TokenData = JSON.parse(data);
-          if (tokenData.expiresAt > Date.now()) {
-            result[userId] = tokenData;
-          }
+          result[key] = JSON.parse(data);
         } catch (error) {
           this.logger.error(`Failed to parse token for key: ${key}`);
         }
@@ -186,6 +195,22 @@ export class TokenService {
     }
 
     return result;
+  }
+
+  async getAllUserInfo(env: string): Promise<Record<string, any>> {
+    const pattern = `${env}:userinfo:*`;
+    const keys = await this.redisService.keys(pattern);
+
+    const results = await Promise.all(
+      keys.map(async (key) => {
+        const data = await this.redisService.hgetall(key);
+        if (!data || Object.keys(data).length === 0) return null;
+
+        return [key, data]; // raw luôn, không parse
+      })
+    );
+
+    return Object.fromEntries(results.filter(Boolean) as [string, Record<string, string>][]);
   }
 
   /**

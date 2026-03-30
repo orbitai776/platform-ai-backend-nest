@@ -1,77 +1,36 @@
 import { Injectable } from '@nestjs/common';
 import { FirebaseService } from '../../services/firebase/firebase.service';
-import { TokenService } from '../token/token.service';
+import { TokenService } from '../../services/token/token.service';
+import { UserUsingService } from '../../services/userUsing/userUsing.service';
 import { JwtService } from '../../services/jwt/jwt.service';
 import { JWTPayload } from '../../services/jwt/jwt.interface';
- 
-// interface JWTPayload {
-//     uid: string;
-//     email?: string;
-//     roles: string[];
-//     [key: string]: any;
-// }
 
-// class JWTService {
-//     private secretKey: string;
-    
-//     constructor() {
-//         this.secretKey = process.env.JWT_SECRET_KEY || 'your-secret-key';
-//     }
-    
-//     sign(payload: JWTPayload, options?: jwt.SignOptions): string {
-//         const defaultOptions: jwt.SignOptions = {
-//             expiresIn: '24h',
-//             algorithm: 'HS256',
-//             issuer: 'your-app-name',
-//             audience: 'your-audience'
-//         };
-        
-//         return jwt.sign(payload, this.secretKey, {
-//             ...defaultOptions,
-//             ...options
-//         });
-//     }
-    
-//     verify(token: string): JWTPayload {
-//         try {
-//             const decoded = jwt.verify(token, this.secretKey, {
-//                 algorithms: ['HS256']
-//             });
-//             return decoded as JWTPayload;
-//         } catch (error) {
-//             if (error instanceof jwt.TokenExpiredError) {
-//                 throw new Error('Token expired');
-//             }
-//             if (error instanceof jwt.JsonWebTokenError) {
-//                 throw new Error('Invalid token');
-//             }
-//             throw error;
-//         }
-//     }
-    
-//     // Refresh token
-//     refresh(oldToken: string): string {
-//         const decoded = this.verify(oldToken);
-//         // Remove iat and exp
-//         const { iat, exp, ...payload } = decoded;
-//         return this.sign(payload as JWTPayload);
-//     }
-// }
-
-// // Sử dụng trong auth function
-// const jwtService = new JWTService();
-
+const defaultEnv = process.env.NODE_ENV || 'development';
 @Injectable()
 export class PublicAuthService {
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly tokenService: TokenService,
+    private readonly userUsingService: UserUsingService,
     private readonly jwtService: JwtService,
   ) {}
   
   auth = async (input: any) => {
     const { idToken } = input;
     const decodedToken = await this.firebaseService.verifyIdToken(idToken);
+
+    const tokenCache = await this.tokenService.getToken(defaultEnv, decodedToken.uid);
+    let userUsingCache = await this.userUsingService.getUserUsing(
+      defaultEnv,
+      decodedToken.uid
+    )
+
+    if (tokenCache) {
+      return {
+        accessToken: tokenCache.accessToken,
+        userUsingCache,
+      }
+    }
 
     const jwtPayload: JWTPayload = {
       uid: decodedToken.uid,
@@ -84,12 +43,15 @@ export class PublicAuthService {
     const customAccessToken = this.jwtService.sign(jwtPayload);
 
     let tokenSaveToCache = {
-      env: process.env.ENV || 'development',
+      env: defaultEnv,
       userId: decodedToken.uid,
       idToken: idToken,
       accessToken: customAccessToken,
-      expiresIn: decodedToken.exp - Math.floor(Date.now() / 1000),
-      metadata: { deviceInfo: "defaultDevice", ipAddress: "0.0.0.0" }
+      expiresIn: 24 * 3600,//decodedToken.exp - Math.floor(Date.now() / 1000),
+      metadata: {
+        deviceInfo: "defaultDevice",
+        ipAddress: "0.0.0.0",
+      }
     }
 
     await this.tokenService.saveToken(
@@ -101,19 +63,62 @@ export class PublicAuthService {
       tokenSaveToCache.metadata
     );
 
+    if (!userUsingCache) {
+      await this.userUsingService.saveUserUsing(
+        defaultEnv,
+        decodedToken.uid,
+        tokenSaveToCache.expiresIn
+      );
+      userUsingCache = await this.userUsingService.getUserUsing(
+        defaultEnv,
+        decodedToken.uid
+      );
+    }
+
     return {
-      firebaseToken: idToken,
       accessToken: customAccessToken,
-      decodedToken,
+      userUsingCache
     }
   }
 
+  testIncUsingToken = async (input: any) => {
+    const { uid } = input;
+    const tokenCache = await this.tokenService.getToken(
+      defaultEnv,
+      uid
+    );
+    if (!tokenCache) {
+      return {
+        accessToken: null,
+      }
+    }
+    const currentUsingToken = await this.userUsingService.incrementUsingToken(defaultEnv, uid, 10);
+    return { currentUsingToken };
+  }
+
   getAllTokensRedis = async () => {
-    const tokenCache = await this.tokenService.getAllTokens(
-      process.env.ENV || 'development'
+    const tokenuid = await this.tokenService.getAllTokens(
+      defaultEnv
     );
 
-    return tokenCache;
+    const tokenUsing = await this.tokenService.getAllUserInfo(
+      defaultEnv
+    );
+
+    const result = {
+      tokenuid,
+      tokenUsing,
+    }
+
+    return result;
+  }
+
+  delAllTokensRedis = async () => {
+    const deleteCount = await this.tokenService.deleteAllTokens(
+      defaultEnv
+    );
+
+    return { deletedCount: deleteCount };
   }
 }
 
