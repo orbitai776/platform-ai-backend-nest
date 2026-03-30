@@ -6,17 +6,21 @@ import { AppService } from './app.service';
 import { RedisModule } from './services/redis/redis.module';
 import { FirebaseModule } from './services/firebase/firebase.module';
 import { PublicAuthModule } from './public/auth/publicAuth.module';
-import { TokenModule } from './public/token/token.module';
 import { JwtModule } from './services/jwt/jwt.module';
+
+import { TokenModule } from './services/token/token.module';
+import { UserUsingModule } from './services/userUsing/userUsing.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
     JwtModule,
-    TokenModule,
     RedisModule,
     FirebaseModule,
     PublicAuthModule,
+
+    TokenModule,
+    UserUsingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
