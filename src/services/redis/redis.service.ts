@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService {
-  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) {}
+  constructor(@Inject('REDIS_CLIENT') private readonly redis: Redis) { }
 
   async get(key: string): Promise<string | null> {
     return await this.redis.get(key);
@@ -52,6 +52,10 @@ export class RedisService {
 
   async incr(key: string): Promise<number> {
     return await this.redis.incr(key);
+  }
+
+  async decrby(key: string, decrement: number): Promise<number> {
+    return await this.redis.decrby(key, decrement);
   }
 
   async expire(key: string, seconds: number): Promise<boolean> {
