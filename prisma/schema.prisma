@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model admin_sessions {
+  id                 String    @id @db.Uuid
+  admin_id           String    @db.Uuid
+  ip_address         String?   @db.VarChar(45)
+  user_agent         String?
+  refresh_token_hash String    @db.VarChar(255)
+  expires_at         DateTime  @db.Timestamp(6)
+  is_revoked         Boolean?  @default(false)
+  created_at         DateTime? @default(now()) @db.Timestamp(6)
+  admins             admins    @relation(fields: [admin_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([admin_id], map: "idx_admin_sessions_admin_id")
+  @@index([expires_at], map: "idx_admin_sessions_expiry")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model admins {
+  id             String           @id @db.Uuid
+  email          String           @unique @db.VarChar(255)
+  password_hash  String           @db.VarChar(255)
+  full_name      String?          @db.VarChar(255)
+  role           String?          @default("admin") @db.VarChar(50)
+  is_active      Boolean?         @default(true)
+  created_at     DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at     DateTime?        @default(now()) @db.Timestamp(6)
+  admin_sessions admin_sessions[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model embedding_config {
+  id                 String           @id @db.Uuid
+  partner_service_id String           @unique @db.Uuid
+  partner_id         String           @db.Uuid
+  embed_code         String?
+  allowed_origins    Json?
+  settings           Json?
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?        @default(now()) @db.Timestamp(6)
+  partners           partners         @relation(fields: [partner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  partner_services   partner_services @relation(fields: [partner_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([partner_id], map: "idx_embed_config_partner")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model guest_sessions {
+  id                 String           @id @db.Uuid
+  partner_service_id String           @db.Uuid
+  anonymous_id       String           @unique @db.VarChar(255)
+  device_fingerprint String?          @db.VarChar(255)
+  ip_address         String?          @db.VarChar(45)
+  user_agent         String?
+  status             String?          @default("active") @db.VarChar(20)
+  converted_user_id  String?          @db.Uuid
+  expires_at         DateTime         @db.Timestamp(6)
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  users              users?           @relation(fields: [converted_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  partner_services   partner_services @relation(fields: [partner_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([expires_at], map: "idx_guest_sessions_expiry")
+  @@index([partner_service_id], map: "idx_guest_sessions_ps_id")
+  @@index([status], map: "idx_guest_sessions_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model order_details {
+  id               String    @id @db.Uuid
+  order_id         String    @db.Uuid
+  product_id       String    @db.Uuid
+  quantity         Int       @default(1)
+  unit_price       Decimal   @db.Decimal(12, 2)
+  product_snapshot Json?
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+  orders           orders    @relation(fields: [order_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products         products  @relation(fields: [product_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([order_id], map: "idx_order_details_order_id")
+  @@index([product_id], map: "idx_order_details_product_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model orders {
+  id                 String           @id @db.Uuid
+  partner_service_id String           @db.Uuid
+  user_id            String?          @db.Uuid
+  guest_session_id   String?          @db.VarChar(255)
+  conversation_id    String?          @db.VarChar(255)
+  contact_info       Json?
+  total_amount       Decimal?         @db.Decimal(12, 2)
+  currency           String?          @default("VND") @db.VarChar(10)
+  status             String?          @default("pending") @db.VarChar(20)
+  note               String?
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?        @default(now()) @db.Timestamp(6)
+  order_details      order_details[]
+  partner_services   partner_services @relation(fields: [partner_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users              users?           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_orders_created")
+  @@index([partner_service_id], map: "idx_orders_ps_id")
+  @@index([status], map: "idx_orders_status")
+  @@index([user_id], map: "idx_orders_user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model partner_services {
+  id                 String               @id @db.Uuid
+  partner_id         String               @db.Uuid
+  service_id         String               @db.Uuid
+  name               String?              @db.VarChar(255)
+  token_limit        Int
+  token_used         Int?                 @default(0)
+  storage_limit      Int?
+  available_schedule Json?                @db.Json
+  config             Json?
+  status             String?              @default("active") @db.VarChar(20)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  embedding_config   embedding_config?
+  guest_sessions     guest_sessions[]
+  orders             orders[]
+  partners           partners             @relation(fields: [partner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  services           services             @relation(fields: [service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  products           products[]
+  service_data       service_data[]
+  token_transactions token_transactions[]
+
+  @@unique([partner_id, service_id], map: "uq_partner_service")
+  @@index([partner_id], map: "idx_ps_partner_id")
+  @@index([service_id], map: "idx_ps_service_id")
+  @@index([status], map: "idx_ps_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model partners {
+  id                 String               @id @db.Uuid
+  owner_user_id      String?              @db.Uuid
+  name               String               @db.VarChar(255)
+  description        String?
+  email              String?              @db.VarChar(255)
+  phone              String?              @db.VarChar(50)
+  address            String?
+  status             String?              @default("pending") @db.VarChar(20)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  embedding_config   embedding_config[]
+  partner_services   partner_services[]
+  users              users?               @relation(fields: [owner_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  payments           payments[]
+  token_transactions token_transactions[]
+
+  @@index([owner_user_id], map: "idx_partners_owner")
+  @@index([status], map: "idx_partners_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model payments {
+  id             String    @id @db.Uuid
+  partner_id     String    @db.Uuid
+  amount         Decimal   @db.Decimal(10, 2)
+  payment_method String?   @db.VarChar(50)
+  status         String?   @default("pending") @db.VarChar(20)
+  transaction_id String?   @db.VarChar(255)
+  token_amount   Int?
+  note           String?
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+  partners       partners  @relation(fields: [partner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([partner_id], map: "idx_payments_partner")
+  @@index([status], map: "idx_payments_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model products {
+  id                 String           @id @db.Uuid
+  partner_service_id String           @db.Uuid
+  name               String           @db.VarChar(255)
+  category           String?          @db.VarChar(50)
+  description        String?
+  base_price         Decimal?         @db.Decimal(12, 2)
+  currency           String?          @default("VND") @db.VarChar(10)
+  metadata           Json?
+  status             String?          @default("active") @db.VarChar(20)
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?        @default(now()) @db.Timestamp(6)
+  order_details      order_details[]
+  partner_services   partner_services @relation(fields: [partner_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([partner_service_id], map: "idx_products_ps_id")
+  @@index([partner_service_id, status], map: "idx_products_ps_status")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model service_data {
+  id                 String                 @id @db.Uuid
+  partner_service_id String                 @db.Uuid
+  source_doc_id      String?                @db.VarChar(255)
+  chunk_index        Int                    @default(0)
+  content            String
+  metadata           Json?
+  embedding          Unsupported("vector")?
+  model_name         String?                @db.VarChar(100)
+  created_at         DateTime?              @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?              @default(now()) @db.Timestamp(6)
+  partner_services   partner_services       @relation(fields: [partner_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([partner_service_id], map: "idx_service_data_ps_id")
+  @@index([source_doc_id], map: "idx_service_data_source_doc")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model services {
+  id               String             @id @db.Uuid
+  name             String             @db.VarChar(255)
+  type             String             @db.VarChar(50)
+  description      String?
+  default_config   Json?
+  status           String?            @default("active") @db.VarChar(20)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  partner_services partner_services[]
+
+  @@index([status], map: "idx_services_status")
+  @@index([type], map: "idx_services_type")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model token_transactions {
+  id                 String           @id @db.Uuid
+  partner_id         String           @db.Uuid
+  partner_service_id String           @db.Uuid
+  user_id            String?          @db.Uuid
+  conversation_id    String?          @db.VarChar(255)
+  guest_session_id   String?          @db.VarChar(255)
+  tokens_used        Int
+  cost               Decimal          @db.Decimal(10, 4)
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  partners           partners         @relation(fields: [partner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  partner_services   partner_services @relation(fields: [partner_service_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users              users?           @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at], map: "idx_token_tx_created")
+  @@index([partner_id], map: "idx_token_tx_partner")
+  @@index([partner_service_id], map: "idx_token_tx_ps")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model user_sessions {
+  id                 String    @id @db.Uuid
+  user_id            String    @db.Uuid
+  device_fingerprint String?   @db.VarChar(255)
+  device_name        String?   @db.VarChar(100)
+  ip_address         String?   @db.VarChar(45)
+  user_agent         String?
+  refresh_token_hash String    @db.VarChar(255)
+  last_active_at     DateTime? @db.Timestamp(6)
+  expires_at         DateTime  @db.Timestamp(6)
+  is_revoked         Boolean?  @default(false)
+  created_at         DateTime? @default(now()) @db.Timestamp(6)
+  users              users     @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id, is_revoked], map: "idx_user_sessions_active")
+  @@index([expires_at], map: "idx_user_sessions_expiry")
+  @@index([user_id], map: "idx_user_sessions_user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id                 String               @id @db.Uuid
+  firebase_uid       String               @unique @db.VarChar(255)
+  email              String?              @unique @db.VarChar(255)
+  full_name          String?              @db.VarChar(255)
+  avatar_url         String?
+  status             String?              @default("active") @db.VarChar(20)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  guest_sessions     guest_sessions[]
+  orders             orders[]
+  partners           partners[]
+  token_transactions token_transactions[]
+  user_sessions      user_sessions[]
+
+  @@index([firebase_uid], map: "idx_users_firebase_uid")
+  @@index([status], map: "idx_users_status")
+}

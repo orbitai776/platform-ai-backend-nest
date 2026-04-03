@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -10,10 +10,20 @@ import { JwtModule } from './services/jwt/jwt.module';
 
 import { TokenModule } from './services/token/token.module';
 import { UserUsingModule } from './services/userUsing/userUsing.module';
+import { ChatModule } from './chat/chat.module';
+
+import { MongooseModule } from '@nestjs/mongoose';
 
 @Module({
   imports: [
     ConfigModule.forRoot(),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
+    }),
     JwtModule,
     RedisModule,
     FirebaseModule,
@@ -21,6 +31,7 @@ import { UserUsingModule } from './services/userUsing/userUsing.module';
 
     TokenModule,
     UserUsingModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
