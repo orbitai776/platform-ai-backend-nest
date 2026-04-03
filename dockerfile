@@ -17,8 +17,13 @@ RUN apk add --no-cache tini && \
 WORKDIR /app
 
 COPY --from=builder --chown=node:node /app/dist ./dist
+COPY --from=builder --chown=node:node /app/node_modules ./node_modules
 COPY --from=builder --chown=node:node /app/package.json ./
 COPY --from=builder --chown=node:node /app/yarn.lock ./
+COPY --from=builder --chown=node:node /app/prisma ./prisma
+
+RUN ls -la node_modules/@prisma/client/ || echo "Prisma client missing!"
+RUN ls -la node_modules/.prisma/ || echo "Prisma .prisma missing!"
 
 RUN yarn install --production --frozen-lockfile --ignore-scripts && \
     yarn cache clean && \
@@ -33,4 +38,4 @@ USER nodejs
 EXPOSE 3000
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
