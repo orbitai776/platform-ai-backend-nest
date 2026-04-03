@@ -1,5 +1,5 @@
 
-import { Controller, Get, Query, Request, Body, Post, Req, Delete } from '@nestjs/common';
+import { Controller, Get, Query, Request, Body, Post, Req, Delete, Res } from '@nestjs/common';
 import { CommonErrorHandlerMiddleware } from '../../common/common-error-handler.middleware';
 import { PublicAuthService } from './publicAuth.service';
 
@@ -14,6 +14,26 @@ export class PublicAuthController {
   async refundBooking(@Body() input:any, @Request() req: any) {
     try {
       return await this.publicAuthService.auth(input);
+    } catch (error) {
+      this.errorHandler.checkError(error)
+    }
+  }
+
+  @Post('/cookies')
+  async authResponseCookies(@Body() input:any, @Request() req: any, @Res() res: any) {
+    try {
+      const authResult = await this.publicAuthService.auth(input);
+      const { accessToken } = authResult; // Lấy token từ kết quả
+
+      res.cookie('accessToken', accessToken, {
+        httpOnly: true,
+        secure: true,//process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 24 * 3600 * 1000,
+        path: '/'
+      });
+
+      return res.json({ message: 'Authentication successful, token set in cookies' });
     } catch (error) {
       this.errorHandler.checkError(error)
     }

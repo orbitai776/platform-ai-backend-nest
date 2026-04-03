@@ -5,23 +5,25 @@ import { UserUsingService } from '../../services/userUsing/userUsing.service';
 import { JwtService } from '../../services/jwt/jwt.service';
 import { JWTPayload } from '../../services/jwt/jwt.interface';
 
-const defaultEnv = process.env.NODE_ENV || 'development';
 @Injectable()
 export class PublicAuthService {
+  private readonly defaultEnv: string;
   constructor(
     private readonly firebaseService: FirebaseService,
     private readonly tokenService: TokenService,
     private readonly userUsingService: UserUsingService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) {
+    this.defaultEnv = process.env.ENV || 'development';
+  }
   
   auth = async (input: any) => {
     const { idToken } = input;
     const decodedToken = await this.firebaseService.verifyIdToken(idToken);
 
-    const tokenCache = await this.tokenService.getToken(defaultEnv, decodedToken.uid);
+    const tokenCache = await this.tokenService.getToken(this.defaultEnv, decodedToken.uid);
     let userUsingCache = await this.userUsingService.getUserUsing(
-      defaultEnv,
+      this.defaultEnv,
       decodedToken.uid
     )
 
@@ -43,7 +45,7 @@ export class PublicAuthService {
     const customAccessToken = this.jwtService.sign(jwtPayload);
 
     let tokenSaveToCache = {
-      env: defaultEnv,
+      env: this.defaultEnv,
       userId: decodedToken.uid,
       idToken: idToken,
       accessToken: customAccessToken,
@@ -65,12 +67,12 @@ export class PublicAuthService {
 
     if (!userUsingCache) {
       await this.userUsingService.saveUserUsing(
-        defaultEnv,
+        this.defaultEnv,
         decodedToken.uid,
         tokenSaveToCache.expiresIn
       );
       userUsingCache = await this.userUsingService.getUserUsing(
-        defaultEnv,
+        this.defaultEnv,
         decodedToken.uid
       );
     }
@@ -84,7 +86,7 @@ export class PublicAuthService {
   testIncUsingToken = async (input: any) => {
     const { uid } = input;
     const tokenCache = await this.tokenService.getToken(
-      defaultEnv,
+      this.defaultEnv,
       uid
     );
     if (!tokenCache) {
@@ -92,17 +94,18 @@ export class PublicAuthService {
         accessToken: null,
       }
     }
-    const currentUsingToken = await this.userUsingService.incrementUsingToken(defaultEnv, uid, 10);
+    const currentUsingToken = await this.userUsingService.incrementUsingToken(this.defaultEnv, uid, 10);
     return { currentUsingToken };
   }
 
   getAllTokensRedis = async () => {
+    console.log(`Env: ${this.defaultEnv}`);
     const tokenuid = await this.tokenService.getAllTokens(
-      defaultEnv
+      this.defaultEnv
     );
 
     const tokenUsing = await this.tokenService.getAllUserInfo(
-      defaultEnv
+      this.defaultEnv
     );
 
     const result = {
@@ -115,7 +118,7 @@ export class PublicAuthService {
 
   delAllTokensRedis = async () => {
     const deleteCount = await this.tokenService.deleteAllTokens(
-      defaultEnv
+      this.defaultEnv
     );
 
     return { deletedCount: deleteCount };
