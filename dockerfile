@@ -1,5 +1,5 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY . .
 RUN yarn build
 
 # Stage 2: Production
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk add --no-cache tini && \
     rm -rf /var/cache/apk/*
