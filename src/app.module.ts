@@ -11,6 +11,7 @@ import { JwtModule } from './services/jwt/jwt.module';
 import { TokenModule } from './services/token/token.module';
 import { UserUsingModule } from './services/userUsing/userUsing.module';
 import { ChatModule } from './chat/chat.module';
+import { PartnerModule } from './partner/partner.module';
 
 import { MongooseModule } from '@nestjs/mongoose';
 
@@ -32,6 +33,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     TokenModule,
     UserUsingModule,
     ChatModule,
+    PartnerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
