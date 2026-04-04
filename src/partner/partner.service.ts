@@ -40,9 +40,18 @@ export class PartnerService {
   //Lấy thông tin doanh nghiệp
   async getProfile(userId: string | null) {
     if (!userId) throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
-    const partner = await this.prisma.partners.findFirst({
-      where: { owner_user_id: userId },
-    });
+
+    let partner: any;
+    
+    try {
+      console.log('Fetching partner profile for userId:', userId);
+      partner = await this.prisma.partners.findFirst({
+        where: { owner_user_id: userId },
+      });
+    } catch (error) {
+      console.error('Error fetching partner profile:', error);
+    }
+
     if (!partner) throw new HttpException('Chưa thiết lập tổ chức', HttpStatus.NOT_FOUND);
     return { status: 'success', data: partner };
   }
