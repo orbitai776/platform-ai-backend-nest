@@ -14,6 +14,7 @@ import { ChatModule } from './chat/chat.module';
 import { PartnerModule } from './partner/partner.module';
 
 import { MongooseModule } from '@nestjs/mongoose';
+import { NewsModule } from './public/news/news.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { MongooseModule } from '@nestjs/mongoose';
     UserUsingModule,
     ChatModule,
     PartnerModule,
+    NewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
