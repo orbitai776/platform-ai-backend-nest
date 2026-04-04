@@ -60,6 +60,13 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
           FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          JWT_EXPIRES_IN: ${{ secrets.JWT_EXPIRES_IN }}
+          JWT_ISSUER: ${{ secrets.JWT_ISSUER }}
+          JWT_AUDIENCE: ${{ secrets.JWT_AUDIENCE }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          MONGO_URI: ${{ secrets.MONGO_URI }}
         run: |
           # Deploy commands
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
@@ -78,11 +85,18 @@ jobs:
               --name $CONTAINER \
               --restart unless-stopped \
               -p $PORT:3000 \
-              -e NODE_ENV=$ENV \
+              -e ENV=$ENV \
               -e PORT=3000 \
               -e FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID \
               -e FIREBASE_CLIENT_EMAIL=$FIREBASE_CLIENT_EMAIL \
               -e FIREBASE_PRIVATE_KEY="$FIREBASE_PRIVATE_KEY" \
+              -e JWT_SECRET_KEY=$JWT_SECRET_KEY \
+              -e JWT_EXPIRES_IN=$JWT_EXPIRES_IN \
+              -e JWT_ISSUER=$JWT_ISSUER \
+              -e JWT_AUDIENCE=$JWT_AUDIENCE \
+              -e REDIS_URL=$REDIS_URL \
+              -e DATABASE_URL=$DATABASE_URL \
+              -e MONGO_URI=$MONGO_URI \
               -e NODE_ENV=$ENV \
               --log-opt max-size=10m \
               --log-opt max-file=3 \
