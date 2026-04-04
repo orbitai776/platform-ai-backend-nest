@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -13,11 +14,20 @@ import { UserUsingModule } from './services/userUsing/userUsing.module';
 import { DatabaseModule } from './services/database/database.module';
 
 import { ServicesOverviewModule } from './admin/dashboard/services-overview/servicesOverview.module';
+import { ChatModule } from './chat/chat.module';
+import { PartnerModule } from './partner/partner.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+    }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        uri: configService.get<string>('MONGO_URI'),
+      }),
     }),
     JwtModule,
     RedisModule,
@@ -27,6 +37,8 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
     TokenModule,
     UserUsingModule,
     ServicesOverviewModule,
+    ChatModule,
+    PartnerModule,
   ],
   controllers: [AppController],
   providers: [AppService],
