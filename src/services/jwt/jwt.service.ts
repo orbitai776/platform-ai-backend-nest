@@ -3,6 +3,7 @@ import { Injectable, Logger, Inject } from '@nestjs/common';
 import * as jwt from 'jsonwebtoken';
 import { JWTPayload, JWTSignOptions } from './jwt.interface';
 import type { StringValue } from "ms";
+import { ConfigService } from '@nestjs/config/dist/config.service';
 
 @Injectable()
 export class JwtService {
@@ -12,14 +13,15 @@ export class JwtService {
     private readonly defaultIssuer: string;
     private readonly defaultAudience: string;
 
-    constructor() {
-        // Lấy config từ environment variables
-        this.secretKey = process.env.JWT_SECRET_KEY || 'your-secret-key';
-        this.defaultExpiresIn = process.env.JWT_EXPIRES_IN || '24h';
-        this.defaultIssuer = process.env.JWT_ISSUER || 'your-app-name';
-        this.defaultAudience = process.env.JWT_AUDIENCE || 'your-audience';
+    constructor(private readonly configService: ConfigService) { 
+        // Sử dụng configService.get() thay vì process.env
+        this.secretKey = this.configService.get<string>('JWT_SECRET_KEY') || 'your-secret-key';
+        this.defaultExpiresIn = this.configService.get<string>('JWT_EXPIRES_IN') || '24h';
+        this.defaultIssuer = this.configService.get<string>('JWT_ISSUER') || 'your-app-name';
+        this.defaultAudience = this.configService.get<string>('JWT_AUDIENCE') || 'your-audience';
 
-        if (!this.secretKey || this.secretKey === 'your-secret-key') {
+        // Kiểm tra xem trong .env có khai báo JWT_SECRET_KEY hay không
+        if (!this.configService.get<string>('JWT_SECRET_KEY')) {
             this.logger.warn('JWT_SECRET_KEY is not set in environment variables. Using default key. This is not secure for production!');
         }
     }
@@ -49,32 +51,55 @@ export class JwtService {
             this.logger.debug(`JWT signed successfully for user: ${payload.uid}`);
             return token;
         } catch (error) {
-            this.logger.error(`Failed to sign JWT: ${error.message}`);
-            throw new Error(`JWT signing failed: ${error.message}`);
+            throw new Error(`JWT signing failed: ${error instanceof Error ? error.message : String(error)}`);
+            // this.logger.error(`Failed to sign JWT: ${error.message}`);
+            // throw new Error(`JWT signing failed: ${error.message}`);
         }
     }
 
     /**
      * Verify JWT token
      */
+    // verify(token: string): JWTPayload {
+    //     try {
+    //         const decoded = jwt.verify(token, this.secretKey, {
+    //             algorithms: ['HS256']
+    //         });
+            
+    //         this.logger.debug('JWT verified successfully');
+    //         return decoded as JWTPayload;
+    //     } catch (error) {
+    //         if (error instanceof jwt.TokenExpiredError) {
+    //             this.logger.warn('JWT token expired');
+    //             throw new Error('Token expired');
+    //         }
+    //         if (error instanceof jwt.JsonWebTokenError) {
+    //             this.logger.warn(`Invalid JWT token: ${error.message}`);
+    //             throw new Error('Invalid token');
+    //         }
+    //         // this.logger.error(`JWT verification failed: ${error.message}`);
+    //         throw error;
+    //     }
+    // }
     verify(token: string): JWTPayload {
         try {
             const decoded = jwt.verify(token, this.secretKey, {
-                algorithms: ['HS256']
+            algorithms: ['HS256'],
+            issuer: this.defaultIssuer,
+            audience: this.defaultAudience,
             });
-            
+
             this.logger.debug('JWT verified successfully');
             return decoded as JWTPayload;
         } catch (error) {
             if (error instanceof jwt.TokenExpiredError) {
-                this.logger.warn('JWT token expired');
-                throw new Error('Token expired');
+            this.logger.warn('JWT token expired');
+            throw new Error('Token expired');
             }
             if (error instanceof jwt.JsonWebTokenError) {
-                this.logger.warn(`Invalid JWT token: ${error.message}`);
-                throw new Error('Invalid token');
+            this.logger.warn(`Invalid JWT token: ${error.message}`);
+            throw new Error('Invalid token');
             }
-            this.logger.error(`JWT verification failed: ${error.message}`);
             throw error;
         }
     }
@@ -98,7 +123,7 @@ export class JwtService {
             this.logger.debug(`JWT refreshed successfully for user: ${payload.uid}`);
             return newToken;
         } catch (error) {
-            this.logger.error(`Failed to refresh JWT: ${error.message}`);
+            // this.logger.error(`Failed to refresh JWT: ${error.message}`);
             throw error;
         }
     }
@@ -111,7 +136,7 @@ export class JwtService {
             const decoded = jwt.decode(token);
             return decoded as JWTPayload | null;
         } catch (error) {
-            this.logger.error(`Failed to decode JWT: ${error.message}`);
+            // this.logger.error(`Failed to decode JWT: ${error.message}`);
             return null;
         }
     }
@@ -127,7 +152,7 @@ export class JwtService {
             }
             return null;
         } catch (error) {
-            this.logger.error(`Failed to get token expiration: ${error.message}`);
+            // this.logger.error(`Failed to get token expiration: ${error.message}`);
             return null;
         }
     }
