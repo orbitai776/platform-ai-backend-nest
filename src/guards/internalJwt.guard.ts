@@ -25,6 +25,8 @@ export class InternalJwtGuard implements CanActivate {
       throw new UnauthorizedException('Invalid Authorization format');
     }
 
+    // request.user = this.jwtService.verify(token);
+    // return true;
     try {
       const payload = this.jwtService.verify(token);
       request.user = payload;

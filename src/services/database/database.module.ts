@@ -11,6 +11,7 @@ import { DatabaseService } from './database.service';
       provide: 'PG_POOL',
       useFactory: (configService: ConfigService) => {
         const connectionString = configService.get<string>('DATABASE_URL');
+
         return new Pool({
           connectionString,
           ssl: connectionString?.includes('supabase')
