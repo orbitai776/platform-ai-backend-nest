@@ -48,7 +48,7 @@ export class PublicAuthService {
 
     const jwtPayload: JWTPayload = {
       uid: user.data.id,
-      roles: ['user'],
+      roles: ['user', 'partner'],
       ...(user.data.email && { email: user.data.email }),
       ...(user.data.full_name && { name: user.data.full_name }),
       ...(user.data.full_name && { full_name: user.data.full_name }),
