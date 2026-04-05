@@ -6,11 +6,13 @@ import { JwtModule } from '../../services/jwt/jwt.module';
 
 import { TokenModule } from '../../services/token/token.module';
 import { UserUsingModule } from '../../services/userUsing/userUsing.module';
+import { UserModule } from '../../services/user/user.module';
 
 @Module({
   imports: [
     TokenModule,
     UserUsingModule,
+    UserModule,
     JwtModule,
   ],
   controllers: [PublicAuthController],
