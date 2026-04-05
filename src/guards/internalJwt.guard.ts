@@ -12,7 +12,8 @@ export class InternalJwtGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const authHeader = request.headers.authorization;
+    const authHeader =
+      request.headers.authorization || request.headers.Authorization;
 
     if (!authHeader || typeof authHeader !== 'string') {
       throw new UnauthorizedException('Missing Authorization header');
@@ -24,7 +25,14 @@ export class InternalJwtGuard implements CanActivate {
       throw new UnauthorizedException('Invalid Authorization format');
     }
 
-    request.user = this.jwtService.verify(token);
-    return true;
+    // request.user = this.jwtService.verify(token);
+    // return true;
+    try {
+      const payload = this.jwtService.verify(token);
+      request.user = payload;
+      return true;
+    } catch (error: any) {
+      throw new UnauthorizedException(error?.message || 'Invalid token');
+    }
   }
 }

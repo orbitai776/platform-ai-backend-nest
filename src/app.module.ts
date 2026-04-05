@@ -17,6 +17,7 @@ import { DatabaseModule } from './services/database/database.module';
 import { ChatModule } from './chat/chat.module';
 import { PartnerModule } from './partner/partner.module';
 import { AiServicesModule } from './admin/ai-services/aiServices.module';
+import { ServicesOverviewModule } from './admin/dashboard/services-overview/servicesOverview.module';
 
 @Module({
   imports: [
@@ -44,6 +45,11 @@ import { AiServicesModule } from './admin/ai-services/aiServices.module';
     TokenModule,
     UserUsingModule,
 
+    // FirebaseModule,
+    // PublicAuthModule,
+    TokenModule,
+    UserUsingModule,
+    ServicesOverviewModule,
     ChatModule,
     PartnerModule,
     AiServicesModule,
