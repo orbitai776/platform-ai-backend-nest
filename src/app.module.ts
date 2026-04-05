@@ -12,6 +12,7 @@ import { JwtModule } from './services/jwt/jwt.module';
 import { RedisModule } from './services/redis/redis.module';
 import { TokenModule } from './services/token/token.module';
 import { UserUsingModule } from './services/userUsing/userUsing.module';
+import { UserModule } from './services/user/user.module';
 import { DatabaseModule } from './services/database/database.module';
 
 import { ChatModule } from './chat/chat.module';
@@ -42,13 +43,13 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
     FirebaseModule,
     PublicAuthModule,
 
-    TokenModule,
-    UserUsingModule,
-
+    // TokenModule,
+    // UserUsingModule,
     // FirebaseModule,
     // PublicAuthModule,
     TokenModule,
     UserUsingModule,
+    UserModule,
     ServicesOverviewModule,
     ChatModule,
     PartnerModule,
