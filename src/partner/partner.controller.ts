@@ -56,6 +56,11 @@ export class PartnerController {
     return this.partnerService.setupAIService(userId, body);
   }
 
+  @Get('ai-services-all')
+  async listAIServicesAll(@Req() req: Request, @Query('status') status?: string) {
+    return this.partnerService.listAIServicesAll(status);
+  }
+
   @Get('ai-services')
   async listAIServices(@Req() req: Request, @Query('status') status?: string) {
     const userId = this.extractUserId(req);
