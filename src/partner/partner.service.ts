@@ -76,6 +76,21 @@ export class PartnerService {
 
   // --- AI Data Services ---
 
+  async listAIServicesAll(statusQuery?: string) {
+    const filterStatus = statusQuery ? statusQuery.split(',') : ['active', 'pause'];
+
+    const services = await this.prisma.services.findMany({
+      where: {
+        status: { in: filterStatus, not: 'disable' }, 
+      },
+    });
+    if (services.length === 0) {
+      throw new HttpException('Không có dịch vụ AI nào', HttpStatus.NOT_FOUND);
+    }
+
+    return { status: 'success', data: services };
+  }
+
   // Gán dịch vụ AI cho đối tác
   async setupAIService(userId: string | null, data: any) {
     const profile = await this.getProfile(userId);
