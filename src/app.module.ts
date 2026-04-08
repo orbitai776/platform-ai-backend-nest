@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './services/jwt/jwt.strategy';
-
+import * as dns from 'node:dns';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
@@ -31,11 +31,26 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        uri:
-          configService.get<string>('MONGO_URI') ||
-          configService.get<string>('MONGODB_URI'),
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const dnsServers = configService.get<string>('DNS_SERVERS');
+
+        if (dnsServers) {
+          const servers = dnsServers
+            .split(',')
+            .map((server) => server.trim())
+            .filter(Boolean);
+
+          if (servers.length > 0) {
+            dns.setServers(servers);
+          }
+        }
+
+        return {
+          uri:
+            configService.get<string>('MONGO_URI') ||
+            configService.get<string>('MONGODB_URI'),
+        };
+      },
     }),
 
     PassportModule.register({ defaultStrategy: 'jwt' }),
