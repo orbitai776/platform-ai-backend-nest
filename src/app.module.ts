@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { PassportModule } from '@nestjs/passport';
+import { JwtStrategy } from './services/jwt/jwt.strategy';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -36,6 +38,7 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
       }),
     }),
 
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule,
     RedisModule,
     DatabaseModule,
@@ -56,6 +59,6 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
     AiServicesModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, JwtStrategy],
 })
 export class AppModule {}
