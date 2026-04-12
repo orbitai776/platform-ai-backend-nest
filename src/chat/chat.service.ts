@@ -7,6 +7,9 @@ import { Message, MessageDocument } from './schemas/message.schema';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../services/redis/redis.service';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class ChatService {
@@ -23,6 +26,7 @@ export class ChatService {
     private messageModel: Model<MessageDocument>,
     private prisma: PrismaService,
     private redis: RedisService,
+    private httpService: HttpService,
   ) { }
 
   // ------------------------------------------------------------------
@@ -52,6 +56,7 @@ export class ChatService {
       user_id: userId ?? null,
       converted_user_id: userId ?? null,
       guest_session_id: userId ? null : (createSessionDto.guest_session_id ?? null),
+      ai_session_id: null,
       slot_state: {},
       session_memory: [],
       status: 'active',
@@ -120,9 +125,13 @@ export class ChatService {
   // ------------------------------------------------------------------
   // API 3: Lấy chi tiết tin nhắn
   // ------------------------------------------------------------------
-  async getMessages(sessionId: string) {
+  async getMessages(conversationId: string) {
+    if (!Types.ObjectId.isValid(conversationId)) {
+      throw new HttpException('conversation_id không hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+
     // Chuyển string sang ObjectId
-    const convId = new Types.ObjectId(sessionId);
+    const convId = new Types.ObjectId(conversationId);
 
     const messages = await this.messageModel
       .find({ conversation_id: convId })
@@ -135,8 +144,12 @@ export class ChatService {
   // ------------------------------------------------------------------
   // API 4: Lõi gửi tin nhắn
   // ------------------------------------------------------------------
-  async sendMessage(sessionId: string, userText: string) {
-    const convId = new Types.ObjectId(sessionId);
+  async sendMessage(conversationId: string, userText: string) {
+    if (!Types.ObjectId.isValid(conversationId)) {
+      throw new HttpException('conversation_id không hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+
+    const convId = new Types.ObjectId(conversationId);
 
     if (!userText || !userText.trim()) {
       throw new HttpException('Nội dung tin nhắn không hợp lệ', HttpStatus.BAD_REQUEST);
@@ -147,65 +160,117 @@ export class ChatService {
       throw new HttpException('Session not found', HttpStatus.NOT_FOUND);
     }
 
+    // ------------------------------------------------------------------
+    // BƯỚC 1: KIỂM TRA ĐIỀU KIỆN (Postgres & Redis)
+    // ------------------------------------------------------------------
+    // Query lấy thông tin Dịch vụ kèm theo Đối tác (Partner)
     const serviceInfo = await this.prisma.partner_services.findUnique({
       where: { id: session.partner_service_id },
+
     });
 
     if (!serviceInfo?.partner_id) {
       throw new HttpException('Không tìm thấy đối tác của dịch vụ', HttpStatus.BAD_REQUEST);
     }
 
-    // Bắt buộc check Redis trước khi bắn sang AI service.
-    const tokenKey = `partner:${serviceInfo.partner_id}:tokens`;
-    const tokenBalance = await this.redis.get(tokenKey);
-    if (Number(tokenBalance || 0) <= 0) {
-      throw new HttpException('Hết hạn mức AI', HttpStatus.PAYMENT_REQUIRED);
+    // Check trạng thái kích hoạt 
+    if (serviceInfo.status !== 'active') {
+      throw new HttpException('Dịch vụ hoặc đối tác đang tạm khóa', HttpStatus.FORBIDDEN);
     }
 
-    // 1. Lưu lời User
+    // Check Quota Token trong Redis
+    const tokenKey = `partner:${serviceInfo.partner_id}:tokens`;
+    const tokenBalance = await this.redis.get(tokenKey);
+    // if (Number(tokenBalance || 0) <= 0) {
+    //   throw new HttpException('Hết hạn mức AI', HttpStatus.PAYMENT_REQUIRED);
+    // }
+
+    // ------------------------------------------------------------------
+    // LƯU TIN NHẮN USER & GỌI AI SERVICE
+    // ------------------------------------------------------------------
     await this.messageModel.create({
       conversation_id: convId,
       role: 'user',
       content: userText,
       tokens_used: 0,
       retrieved_docs: [],
-      slot_snapshot: {},
+      slot_snapshot: session.slot_state,
     });
 
-    // 2. Gọi AI (tạm fake data AI trả về)
-    const aiData = {
-      reply_text: 'Dạ, anh muốn đi ngày nào ạ?',
-      tokens_used: 10,
-      current_slots: { ...session.slot_state, destination: 'Đà Lạt' },
-      new_memory: 'Khách quan tâm tour Đà Lạt',
-      retrieved_docs: [
-        { service_data_id: 'doc_1', content: 'Tour ĐL...', score: 0.95 },
-      ],
-      is_slot_filled_completed: false,
-    };
+    let aiResponseData: any;
+    let aiSessionId = session.ai_session_id;
+    try {
+      // Gọi API sang AI Service
+      const aiApiUrl = process.env.AI_SERVICE_URL;
 
-    // 3. Trừ quota Redis và cập nhật hội thoại.
-    await this.redis.decrby(tokenKey, aiData.tokens_used);
+      if (!aiSessionId) {
+        const startResponse = await firstValueFrom(
+          this.httpService.post(`${aiApiUrl}/api/v1/chat/start`, {
+            first_message: userText,
+          }),
+        );
+
+        aiResponseData = startResponse.data?.data ?? startResponse.data ?? {};
+        aiSessionId = aiResponseData.session_id;
+
+        if (!aiSessionId) {
+          throw new Error('AI start response không có session_id');
+        }
+      } else {
+        const turnResponse = await firstValueFrom(
+          this.httpService.post(`${aiApiUrl}/api/v1/chat/turn`, {
+            session_id: aiSessionId,
+            message: userText,
+          }),
+        );
+
+        aiResponseData = turnResponse.data?.data ?? turnResponse.data ?? {};
+      }
+    } catch (error: unknown) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      console.error('Lỗi gọi AI Service:', axiosError.response?.data || axiosError.message);
+      throw new HttpException('AI Service hiện không phản hồi', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    // Map dữ liệu từ AI Service
+    const replyText = aiResponseData.reply || 'Xin lỗi, hệ thống AI đang bận.';
+    const aiStatus = aiResponseData.status || 'collecting'; // 'collecting' hoặc 'completed'
+    const isCompleted = aiStatus === 'completed';
+    const newSlots = aiResponseData.filled_slots || aiResponseData.slots || session.slot_state;
+
+    // Giả định AI Service trả về usage. Nếu không, mặc định trừ 10 token/lượt
+    const tokensUsed = aiResponseData.usage?.total_tokens || 10;
+
+    // ------------------------------------------------------------------
+    // TRỪ TOKEN & CẬP NHẬT DATABASE
+    // ------------------------------------------------------------------
+    await this.redis.decrby(tokenKey, tokensUsed);
 
     await this.conversationModel.findByIdAndUpdate(convId, {
-      slot_state: aiData.current_slots,
-      $push: { session_memory: aiData.new_memory },
+      ai_session_id: aiSessionId,
+      slot_state: newSlots,
+      status: isCompleted ? 'completed' : 'active', // Đánh dấu chốt deal nếu gom đủ slot
     });
 
     await this.messageModel.create({
       conversation_id: convId,
       role: 'assistant',
-      content: aiData.reply_text,
-      tokens_used: aiData.tokens_used,
-      retrieved_docs: aiData.retrieved_docs,
-      slot_snapshot: aiData.current_slots,
+      content: replyText,
+      tokens_used: tokensUsed,
+      retrieved_docs: aiResponseData.retrieved_docs || [],
+      slot_snapshot: newSlots,
     });
 
-    // 4. Nếu AI đã gom đủ param thì mới trả danh sách sản phẩm.
+    // ------------------------------------------------------------------
+    // QUERY SẢN PHẨM (Nếu AI báo đã gom đủ thông tin)
+    // ------------------------------------------------------------------
     let products: any[] = [];
-    if (aiData.is_slot_filled_completed) {
+    if (isCompleted) {
       products = await this.prisma.products.findMany({
-        where: { partner_service_id: session.partner_service_id, status: 'active' },
+        where: {
+          partner_service_id: session.partner_service_id,
+          status: 'active'
+        },
         take: 5,
       });
     }
@@ -213,9 +278,11 @@ export class ChatService {
     return {
       status: 'success',
       data: {
+        conversation_id: conversationId,
         role: 'assistant',
-        content: aiData.reply_text,
-        is_completed: aiData.is_slot_filled_completed,
+        content: replyText,
+        is_completed: isCompleted,
+        missing_slots: aiResponseData.missing_slots || [],
         products: products,
       },
     };
