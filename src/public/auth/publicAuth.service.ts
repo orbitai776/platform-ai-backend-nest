@@ -7,6 +7,7 @@ import { JwtService } from '../../services/jwt/jwt.service';
 import { JWTPayload } from '../../services/jwt/jwt.interface';
 
 const defaultEnv = process.env.NODE_ENV || 'development';
+const FE_ADMIN_EMAIL = 'orbitaifrontendadmin@gmail.com';
 
 @Injectable()
 export class PublicAuthService {
@@ -46,9 +47,17 @@ export class PublicAuthService {
       picture: decodedToken.picture,
     });
 
+    const roles: string[] = ['user', 'partner'];
+    if (
+      user.data.email &&
+      user.data.email.toLowerCase() === FE_ADMIN_EMAIL.toLowerCase()
+    ) {
+      roles.push('admin');
+    }
+
     const jwtPayload: JWTPayload = {
       uid: user.data.id,
-      roles: ['user', 'partner'],
+      roles,
       ...(user.data.email && { email: user.data.email }),
       ...(user.data.full_name && { name: user.data.full_name }),
       ...(user.data.full_name && { full_name: user.data.full_name }),
