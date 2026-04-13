@@ -9,8 +9,8 @@ WORKDIR /app
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV DATABASE_URL=${DATABASE_URL}
 
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --ignore-optional
+COPY package.json ./
+RUN yarn install --ignore-optional
 COPY . .
 RUN yarn build
 
