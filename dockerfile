@@ -19,8 +19,8 @@ FROM node:20-alpine AS prod-deps
 
 WORKDIR /app
 
-COPY package.json yarn.lock ./
-RUN yarn install --production --frozen-lockfile --ignore-optional && \
+COPY package.json ./
+RUN yarn install --production --ignore-optional && \
     yarn cache clean && \
     # Xoá packages không cần ở runtime
     rm -rf node_modules/typescript \
