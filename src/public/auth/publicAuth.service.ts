@@ -13,6 +13,7 @@ const FE_ADMIN_EMAIL = [
   'phongongp121@gmail.com',
   'hieuh5982@gmail.com',
   'lecongnguyen213@gmail.com',
+  'luanhhao491@gmail.com',
 ].map(email => email.toLowerCase());
 
 @Injectable()
