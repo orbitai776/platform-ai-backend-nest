@@ -18,8 +18,8 @@ export class PublicAuthController {
     try {
       console.log(`Traceparent: ${req.headers['traceparent']}`);
       if (input.idToken) {
-        console.log(`Received idToken: ${input.idToken.substring(0, 50)}...`);
-        span.setAttribute('idFirebaseToken', input.idToken.substring(0, 50));
+        console.log(`Received idToken: ...${input.idToken.slice(-10)}`);
+        span.setAttribute('idFirebaseToken', `...${input.idToken.slice(-10)}`);
       }
       
       const authResult = await this.publicAuthService.auth(input);
