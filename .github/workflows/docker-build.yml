@@ -69,6 +69,7 @@ jobs:
           MONGO_URI: ${{ secrets.MONGO_URI }}
           OLTP_AUTH: ${{ secrets.OLTP_AUTH }}
           OLTP_URL: ${{ secrets.OLTP_URL }}
+          AI_SERVICE_URL: ${{ secrets.AI_SERVICE_URL }}
         run: |
           # Deploy commands
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
@@ -102,6 +103,7 @@ jobs:
               -e NODE_ENV=$ENV \
               -e OLTP_AUTH=$OLTP_AUTH \
               -e OLTP_URL=$OLTP_URL \
+              -e AI_SERVICE_URL=$AI_SERVICE_URL \
               --log-opt max-size=10m \
               --log-opt max-file=3 \
               ghcr.io/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
@@ -199,6 +201,8 @@ jobs:
                     value: "${{ secrets.OLTP_AUTH }}"
                   - name: OLTP_URL
                     value: "${{ secrets.OLTP_URL }}"
+                  - name: AI_SERVICE_URL
+                    value: "$AI_SERVICE_URL"
           YAML
 
       - name: Deploy to Oracle VPS
