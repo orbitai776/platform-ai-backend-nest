@@ -4,10 +4,10 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 
 export function createOtelSDK(serviceName: string) {
-  const rawAuth = process.env.OLTP_AUTH || '';
+  const rawAuth = process.env.OTLP_AUTH || '';
   let authHeader = '';
   if (!rawAuth) {
-    throw new Error('OTEL: missing OLTP_AUTH');
+    throw new Error('OTEL: missing OTLP_AUTH');
   } else if (rawAuth.toLowerCase().startsWith('basic ')) {
     authHeader = rawAuth;
   } else if (rawAuth.includes(':')) {
@@ -18,7 +18,7 @@ export function createOtelSDK(serviceName: string) {
   }
 
   const exporter = new OTLPTraceExporter({
-    url: `https://${process.env.OLTP_URL}/otlp/v1/traces`,
+    url: `https://${process.env.OTLP_URL}/otlp/v1/traces`,
     headers: {
       Authorization: authHeader,
     },
