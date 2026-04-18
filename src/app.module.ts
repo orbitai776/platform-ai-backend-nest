@@ -1,30 +1,26 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { ServicesOverviewModule } from './admin/dashboard/services-overview/servicesOverview.module';
+import { AiServicesModule } from './admin/ai-services/aiServices.module';
 
+import { ChatModule } from './chat/chat.module';
+import { DatabaseModule } from './services/database/database.module';
 import { FirebaseModule } from './services/firebase/firebase.module';
-import { PublicAuthModule } from './public/auth/publicAuth.module';
-
 import { JwtModule } from './services/jwt/jwt.module';
+import { PartnerModule } from './partner/partner.module';
+import { PublicAuthModule } from './public/auth/publicAuth.module';
 import { RedisModule } from './services/redis/redis.module';
 import { TokenModule } from './services/token/token.module';
 import { UserUsingModule } from './services/userUsing/userUsing.module';
-import { DatabaseModule } from './services/database/database.module';
-
-import { ChatModule } from './chat/chat.module';
-import { PartnerModule } from './partner/partner.module';
-import { AiServicesModule } from './admin/ai-services/aiServices.module';
-import { ServicesOverviewModule } from './admin/dashboard/services-overview/servicesOverview.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-
     MongooseModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -34,24 +30,15 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
           configService.get<string>('MONGODB_URI'),
       }),
     }),
-
     JwtModule,
     RedisModule,
     DatabaseModule,
-
     FirebaseModule,
     PublicAuthModule,
-
-    TokenModule,
-    UserUsingModule,
-
-    // FirebaseModule,
-    // PublicAuthModule,
     TokenModule,
     UserUsingModule,
     ServicesOverviewModule,
     ChatModule,
-    PartnerModule,
     AiServicesModule,
   ],
   controllers: [AppController],

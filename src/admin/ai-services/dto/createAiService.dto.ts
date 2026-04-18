@@ -3,11 +3,11 @@ import { IsIn, IsObject, IsOptional, IsString, Length } from 'class-validator';
 export class CreateAiServiceDto {
   @IsString()
   @Length(2, 255)
-  name: string;
+  name!: string;
 
   @IsString()
   @Length(2, 50)
-  type: string;
+  type!: string;
 
   @IsOptional()
   @IsString()
