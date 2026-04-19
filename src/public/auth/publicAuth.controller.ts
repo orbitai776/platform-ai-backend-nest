@@ -2,6 +2,7 @@
 import { Controller, Get, Query, Request, Body, Post, Req, Delete, Res } from '@nestjs/common';
 import { CommonErrorHandlerMiddleware } from '../../common/common-error-handler.middleware';
 import { PublicAuthService } from './publicAuth.service';
+import { trace } from '@opentelemetry/api';
 
 @Controller('public/auth')
 export class PublicAuthController {
@@ -12,10 +13,24 @@ export class PublicAuthController {
 
   @Post('/')
   async refundBooking(@Body() input:any, @Request() req: any) {
+    const tracer = trace.getTracer('platform-ai-gateway');
+    const span = tracer.startSpan('auth-flow');
     try {
-      return await this.publicAuthService.auth(input);
+      console.log(`Traceparent: ${req.headers['traceparent']}`);
+      if (input.idToken) {
+        console.log(`Received idToken: ...${input.idToken.slice(-10)}`);
+        span.setAttribute('idFirebaseToken', `...${input.idToken.slice(-10)}`);
+      }
+      
+      const authResult = await this.publicAuthService.auth(input);
+
+      return authResult;
     } catch (error) {
+      span.setAttribute('error', true);
+      span.recordException(error as Error);
       this.errorHandler.checkError(error)
+    } finally {
+      span.end();
     }
   }
 
