@@ -3,6 +3,7 @@ import { AiServicesController } from './aiServices.controller';
 import { AiServicesService } from './aiServices.service';
 import { AiServicesRepository } from './aiServices.repository';
 import { InternalJwtGuard } from '../../guards/internalJwt.guard';
+import { RolesGuard } from '../../services/jwt/roles.guard';
 
 @Module({
   controllers: [AiServicesController],
@@ -10,6 +11,7 @@ import { InternalJwtGuard } from '../../guards/internalJwt.guard';
     AiServicesService,
     AiServicesRepository,
     InternalJwtGuard,
+    RolesGuard,
   ],
 })
 export class AiServicesModule {}

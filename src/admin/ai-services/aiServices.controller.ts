@@ -14,9 +14,12 @@ import { SearchAiServicesDto } from './dto/searchAiServices.dto';
 import { CreateAiServiceDto } from './dto/createAiService.dto';
 import { UpdateAiServiceDto } from './dto/updateAiService.dto';
 import { InternalJwtGuard } from '../../guards/internalJwt.guard';
+import { Roles } from '../../services/jwt/roles.decorator';
+import { RolesGuard } from '../../services/jwt/roles.guard';
 
 @Controller('v1/admin/services')
-@UseGuards(InternalJwtGuard)
+@UseGuards(InternalJwtGuard, RolesGuard)
+@Roles('admin')
 export class AiServicesController {
   constructor(private readonly aiServicesService: AiServicesService) {}
 

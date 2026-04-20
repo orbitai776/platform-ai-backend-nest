@@ -204,7 +204,7 @@ export class ChatService {
       const aiApiUrl = process.env.AI_SERVICE_URL;
 
       if (!aiSessionId) {
-        const startResponse = await firstValueFrom(
+        const startResponse: any = await firstValueFrom(
           this.httpService.post(`${aiApiUrl}/api/v1/chat/start`, {
             first_message: userText,
           }),
@@ -217,7 +217,7 @@ export class ChatService {
           throw new Error('AI start response không có session_id');
         }
       } else {
-        const turnResponse = await firstValueFrom(
+        const turnResponse: any = await firstValueFrom(
           this.httpService.post(`${aiApiUrl}/api/v1/chat/turn`, {
             session_id: aiSessionId,
             message: userText,
