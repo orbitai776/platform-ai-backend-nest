@@ -21,6 +21,8 @@ import { ChatModule } from './chat/chat.module';
 import { PartnerModule } from './partner/partner.module';
 import { AiServicesModule } from './admin/ai-services/aiServices.module';
 import { ServicesOverviewModule } from './admin/dashboard/services-overview/servicesOverview.module';
+import { UsersOverviewModule } from './admin/dashboard/users-overview/usersOverview.module';
+import { PartnersOverviewModule } from './admin/dashboard/partners-overview/partnersOverview.module';
 
 @Module({
   imports: [
@@ -61,14 +63,12 @@ import { ServicesOverviewModule } from './admin/dashboard/services-overview/serv
     FirebaseModule,
     PublicAuthModule,
 
-    // TokenModule,
-    // UserUsingModule,
-    // FirebaseModule,
-    // PublicAuthModule,
     TokenModule,
     UserUsingModule,
     UserModule,
     ServicesOverviewModule,
+    UsersOverviewModule,
+    PartnersOverviewModule,
     ChatModule,
     PartnerModule,
     AiServicesModule,
