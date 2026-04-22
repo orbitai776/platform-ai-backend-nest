@@ -1,5 +1,14 @@
-
-import { Controller, Get, Query, Request, Body, Post, Req, Delete, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Request,
+  Body,
+  Post,
+  Req,
+  Delete,
+  Res,
+} from '@nestjs/common';
 import { CommonErrorHandlerMiddleware } from '../../common/common-error-handler.middleware';
 import { PublicAuthService } from './publicAuth.service';
 import { trace } from '@opentelemetry/api';
@@ -12,45 +21,36 @@ export class PublicAuthController {
   ) {}
 
   @Post('/')
-  async refundBooking(@Body() input:any, @Request() req: any) {
-    const tracer = trace.getTracer('platform-ai-gateway');
-    const span = tracer.startSpan('auth-flow');
-    try {
-      console.log(`Traceparent: ${req.headers['traceparent']}`);
-      if (input.idToken) {
-        console.log(`Received idToken: ...${input.idToken.slice(-10)}`);
-        span.setAttribute('idFirebaseToken', `...${input.idToken.slice(-10)}`);
-      }
-      
-      const authResult = await this.publicAuthService.auth(input);
-
-      return authResult;
-    } catch (error) {
-      span.setAttribute('error', true);
-      span.recordException(error as Error);
-      this.errorHandler.checkError(error)
-    } finally {
-      span.end();
+  async refundBooking(@Body() input: any, @Request() req: any) {
+    if (input.idToken) {
+      console.log(`Received idToken: ${input.idToken.substring(0, 50)}...`);
     }
+    return this.publicAuthService.auth(input);
   }
 
   @Post('/cookies')
-  async authResponseCookies(@Body() input:any, @Request() req: any, @Res() res: any) {
+  async authResponseCookies(
+    @Body() input: any,
+    @Request() req: any,
+    @Res() res: any,
+  ) {
     try {
       const authResult = await this.publicAuthService.auth(input);
       const { accessToken } = authResult; // Lấy token từ kết quả
 
       res.cookie('accessToken', accessToken, {
         httpOnly: true,
-        secure: true,//process.env.NODE_ENV === 'production',
+        secure: true, //process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 24 * 3600 * 1000,
-        path: '/'
+        path: '/',
       });
 
-      return res.json({ message: 'Authentication successful, token set in cookies' });
+      return res.json({
+        message: 'Authentication successful, token set in cookies',
+      });
     } catch (error) {
-      this.errorHandler.checkError(error)
+      this.errorHandler.checkError(error);
     }
   }
 
@@ -60,7 +60,7 @@ export class PublicAuthController {
       input.uid = input.uid || 'tHShcFW7dEbyOnriYg7IZJyOPyj1';
       return await this.publicAuthService.testIncUsingToken(input);
     } catch (error) {
-      this.errorHandler.checkError(error)
+      this.errorHandler.checkError(error);
     }
   }
 
@@ -69,7 +69,7 @@ export class PublicAuthController {
     try {
       return await this.publicAuthService.getAllTokensRedis();
     } catch (error) {
-      this.errorHandler.checkError(error)
+      this.errorHandler.checkError(error);
     }
   }
 
@@ -78,7 +78,7 @@ export class PublicAuthController {
     try {
       return await this.publicAuthService.delAllTokensRedis();
     } catch (error) {
-      this.errorHandler.checkError(error)
+      this.errorHandler.checkError(error);
     }
   }
 }
