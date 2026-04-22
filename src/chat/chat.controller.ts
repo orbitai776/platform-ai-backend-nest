@@ -78,8 +78,12 @@ export class ChatController {
   @Post(':conversation_id/messages')
   async sendMessage(
     @Param('conversation_id') conversationId: string,
-    @Body() sendMessageDto: any,
+    @Body() sendMessageDto: SendMessageDto,
   ) {
-    return this.chatService.sendMessage(conversationId, sendMessageDto.content);
+    return this.chatService.sendMessage(
+      conversationId,
+      sendMessageDto.content,
+      sendMessageDto.service_name,
+    );
   }
 }
