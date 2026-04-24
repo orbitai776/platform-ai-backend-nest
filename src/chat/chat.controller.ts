@@ -46,7 +46,7 @@ export class ChatController {
   // 1. POST /api/chat/conversations
   @Post()
   async createSession(
-    @Body() createSessionDto: any,
+    @Body() createSessionDto: CreateSessionDto,
     @Req() req: Request,
   ) {
     const userId = this.extractUserId(req);
@@ -83,7 +83,6 @@ export class ChatController {
     return this.chatService.sendMessage(
       conversationId,
       sendMessageDto.content,
-      sendMessageDto.service_name,
     );
   }
 }
