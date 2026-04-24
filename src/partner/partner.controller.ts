@@ -4,7 +4,7 @@ import { PartnerService } from './partner.service';
 import { JwtService } from '../services/jwt/jwt.service';
 import { JwtAuthGuard } from '../services/jwt/jwt-auth.guard';
 import { RolesGuard } from '../services/jwt/roles.guard';
-import { Roles } from '../services/jwt/roles.decorator';
+import { RolePublic ,Roles } from '../services/jwt/roles.decorator';
 
 
 @Controller('v1/partner')
@@ -77,6 +77,12 @@ export class PartnerController {
     const userId = this.extractUserId(req);
     return this.partnerService.listAIServices(userId, status);
   }
+
+  @RolePublic()
+  @Get('active-ai-services')
+  async listActiveAIServices(@Req() req: Request) {
+    return this.partnerService.listActiveAIServices();
+    }
 
   @Roles('partner')
   @Get('ai-services/:id')
