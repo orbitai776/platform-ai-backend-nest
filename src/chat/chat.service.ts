@@ -144,7 +144,7 @@ export class ChatService {
   // ------------------------------------------------------------------
   // API 4: Lõi gửi tin nhắn
   // ------------------------------------------------------------------
-  async sendMessage(conversationId: string, userText: string) {
+  async sendMessage(conversationId: string, userText: string, serviceName: string) {
     if (!Types.ObjectId.isValid(conversationId)) {
       throw new HttpException('conversation_id không hợp lệ', HttpStatus.BAD_REQUEST);
     }
@@ -153,6 +153,10 @@ export class ChatService {
 
     if (!userText || !userText.trim()) {
       throw new HttpException('Nội dung tin nhắn không hợp lệ', HttpStatus.BAD_REQUEST);
+    }
+
+    if (!serviceName || !serviceName.trim()) {
+      throw new HttpException('service_name không hợp lệ', HttpStatus.BAD_REQUEST);
     }
 
     const session = await this.conversationModel.findById(convId);
@@ -207,6 +211,7 @@ export class ChatService {
         const startResponse: any = await firstValueFrom(
           this.httpService.post(`${aiApiUrl}/api/v1/chat/start`, {
             first_message: userText,
+            service_name: serviceName,
           }),
         );
 
@@ -280,6 +285,7 @@ export class ChatService {
       data: {
         conversation_id: conversationId,
         role: 'assistant',
+        service_name: serviceName,
         content: replyText,
         is_completed: isCompleted,
         missing_slots: aiResponseData.missing_slots || [],

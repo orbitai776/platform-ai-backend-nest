@@ -31,6 +31,11 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.6",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.71.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
+    "@opentelemetry/resources": "^2.7.0",
+    "@opentelemetry/sdk-node": "^0.215.0",
     "@prisma/adapter-pg": "^5.22.0",
     "@prisma/client": "^5.22.0",
     "axios": "^1.14.0",
@@ -46,10 +51,7 @@
     "redis": "^5.11.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "uuid": "^13.0.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.71.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.213.0",
-    "@opentelemetry/sdk-node": "^0.213.0"
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

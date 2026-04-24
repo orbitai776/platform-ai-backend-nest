@@ -4,4 +4,8 @@ export class SendMessageDto {
   @IsString()
   @IsNotEmpty()
   content!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  service_name!: string;
 }
