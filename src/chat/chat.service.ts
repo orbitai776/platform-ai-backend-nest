@@ -10,6 +10,7 @@ import { RedisService } from '../services/redis/redis.service';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { AxiosError } from 'axios';
+import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ChatService {
@@ -37,9 +38,9 @@ export class ChatService {
       throw new HttpException('partner_service_id phải là UUID hợp lệ', HttpStatus.BAD_REQUEST);
     }
 
-    if (!userId && !createSessionDto?.guest_session_id) {
-      throw new HttpException('guest_session_id là bắt buộc cho guest', HttpStatus.BAD_REQUEST);
-    }
+    const guestSessionId = userId
+      ? null
+      : (createSessionDto?.guest_session_id?.trim() || randomUUID());
 
     // 1. Validate Postgres: partner_service_id có tồn tại không?
     const serviceExists = await this.prisma.partner_services.findUnique({
@@ -55,7 +56,7 @@ export class ChatService {
       partner_service_id: createSessionDto.partner_service_id,
       user_id: userId ?? null,
       converted_user_id: userId ?? null,
-      guest_session_id: userId ? null : (createSessionDto.guest_session_id ?? null),
+      guest_session_id: guestSessionId,
       ai_session_id: null,
       slot_state: {},
       session_memory: [],
@@ -66,6 +67,7 @@ export class ChatService {
       status: 'success',
       data: {
         conversation_id: String(newSession._id),
+        guest_session_id: newSession.guest_session_id,
         created_at: newSession.created_at,
       },
     };
@@ -144,7 +146,7 @@ export class ChatService {
   // ------------------------------------------------------------------
   // API 4: Lõi gửi tin nhắn
   // ------------------------------------------------------------------
-  async sendMessage(conversationId: string, userText: string, serviceName: string) {
+  async sendMessage(conversationId: string, userText: string) {
     if (!Types.ObjectId.isValid(conversationId)) {
       throw new HttpException('conversation_id không hợp lệ', HttpStatus.BAD_REQUEST);
     }
@@ -153,10 +155,6 @@ export class ChatService {
 
     if (!userText || !userText.trim()) {
       throw new HttpException('Nội dung tin nhắn không hợp lệ', HttpStatus.BAD_REQUEST);
-    }
-
-    if (!serviceName || !serviceName.trim()) {
-      throw new HttpException('service_name không hợp lệ', HttpStatus.BAD_REQUEST);
     }
 
     const session = await this.conversationModel.findById(convId);
@@ -170,7 +168,7 @@ export class ChatService {
     // Query lấy thông tin Dịch vụ kèm theo Đối tác (Partner)
     const serviceInfo = await this.prisma.partner_services.findUnique({
       where: { id: session.partner_service_id },
-
+      include: { services: true },
     });
 
     if (!serviceInfo?.partner_id) {
@@ -180,6 +178,14 @@ export class ChatService {
     // Check trạng thái kích hoạt 
     if (serviceInfo.status !== 'active') {
       throw new HttpException('Dịch vụ hoặc đối tác đang tạm khóa', HttpStatus.FORBIDDEN);
+    }
+
+    const serviceName = serviceInfo.services?.type?.trim();
+    if (!serviceName) {
+      throw new HttpException(
+        'Không tìm thấy service type tương ứng với partner_service_id',
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     // Check Quota Token trong Redis
@@ -206,6 +212,9 @@ export class ChatService {
     try {
       // Gọi API sang AI Service
       const aiApiUrl = process.env.AI_SERVICE_URL;
+      if (!aiApiUrl || !aiApiUrl.trim()) {
+        throw new HttpException('Thiếu cấu hình AI_SERVICE_URL', HttpStatus.INTERNAL_SERVER_ERROR);
+      }
 
       if (!aiSessionId) {
         const startResponse: any = await firstValueFrom(
@@ -215,11 +224,16 @@ export class ChatService {
           }),
         );
 
-        aiResponseData = startResponse.data?.data ?? startResponse.data ?? {};
-        aiSessionId = aiResponseData.session_id;
+        const startData = startResponse.data?.data;
+        if (!startData || typeof startData !== 'object') {
+          throw new HttpException('AI start response sai định dạng (thiếu data)', HttpStatus.BAD_GATEWAY);
+        }
+
+        aiResponseData = startData;
+        aiSessionId = startData.session_id;
 
         if (!aiSessionId) {
-          throw new Error('AI start response không có session_id');
+          throw new HttpException('AI start response không có session_id', HttpStatus.BAD_GATEWAY);
         }
       } else {
         const turnResponse: any = await firstValueFrom(
@@ -229,11 +243,38 @@ export class ChatService {
           }),
         );
 
-        aiResponseData = turnResponse.data?.data ?? turnResponse.data ?? {};
+        const turnData = turnResponse.data?.data;
+        if (!turnData || typeof turnData !== 'object') {
+          throw new HttpException('AI turn response sai định dạng (thiếu data)', HttpStatus.BAD_GATEWAY);
+        }
+
+        aiResponseData = turnData;
+        aiSessionId = turnData.session_id;
+        if (!aiSessionId) {
+          throw new HttpException('AI turn response không có session_id', HttpStatus.BAD_GATEWAY);
+        }
       }
     } catch (error: unknown) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+
       const axiosError = error as AxiosError<{ message?: string }>;
-      console.error('Lỗi gọi AI Service:', axiosError.response?.data || axiosError.message);
+      const upstreamStatus = axiosError.response?.status;
+      const upstreamData = axiosError.response?.data;
+
+      console.error('Lỗi gọi AI Service:', upstreamData || axiosError.message);
+
+      if (upstreamStatus) {
+        throw new HttpException(
+          {
+            message: 'AI Service trả về lỗi',
+            ai_message: upstreamData?.message || axiosError.message,
+          },
+          upstreamStatus,
+        );
+      }
+
       throw new HttpException('AI Service hiện không phản hồi', HttpStatus.SERVICE_UNAVAILABLE);
     }
 
