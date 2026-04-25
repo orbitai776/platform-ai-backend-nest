@@ -14,6 +14,170 @@ import { randomUUID } from 'crypto';
 
 @Injectable()
 export class ChatService {
+  private normalizeText(value: unknown): string {
+    return String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+  }
+
+  private toNumber(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number(value.replace(/[^0-9.]/g, ''));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+  }
+
+  private isPriceLikeKey(key: string): boolean {
+    const normalizedKey = this.normalizeText(key);
+    return [
+      'price',
+      'budget',
+      'amount',
+      'cost',
+      'gia',
+      'ngan sach',
+      'muc gia',
+    ].some((k) => normalizedKey.includes(k));
+  }
+
+  private compareSlotAndProductValue(
+    slotKey: string,
+    userValue: unknown,
+    productValue: unknown,
+  ): number {
+    if (userValue == null || productValue == null) {
+      return 0;
+    }
+
+    if (typeof userValue === 'boolean' || typeof productValue === 'boolean') {
+      return userValue === productValue ? 10 : 0;
+    }
+
+    const userNum = this.toNumber(userValue);
+    const productNum = this.toNumber(productValue);
+    if (userNum != null && productNum != null) {
+      if (this.isPriceLikeKey(slotKey)) {
+        if (productNum <= userNum) {
+          return 10;
+        }
+
+        if (productNum <= userNum * 1.2) {
+          return 5;
+        }
+
+        return 0;
+      }
+
+      const ratio = Math.abs(productNum - userNum) / Math.max(userNum, 1);
+      if (ratio <= 0.1) {
+        return 10;
+      }
+
+      if (ratio <= 0.25) {
+        return 5;
+      }
+
+      return 0;
+    }
+
+    const userText = this.normalizeText(userValue);
+    const productText = this.normalizeText(productValue);
+    if (userText && productText) {
+      if (productText.includes(userText) || userText.includes(productText)) {
+        return 10;
+      }
+    }
+
+    if (Array.isArray(userValue) && Array.isArray(productValue)) {
+      const normalizedProductSet = new Set(productValue.map((item) => this.normalizeText(item)));
+      const intersects = userValue.some((item) => normalizedProductSet.has(this.normalizeText(item)));
+      return intersects ? 10 : 0;
+    }
+
+    return userValue === productValue ? 10 : 0;
+  }
+
+  private rankProductsByUserNeed(
+    products: Array<{
+      id: string;
+      name: string;
+      category: string | null;
+      description: string | null;
+      base_price: any;
+      metadata: any;
+      currency: string | null;
+      status: string | null;
+    }>,
+    slots: Record<string, unknown>,
+  ): any[] {
+    const slotEntries = Object.entries(slots || {});
+
+    const ranked = products.map((product) => {
+      let score = 0;
+      let matchedKeyCount = 0;
+      const metadata = ((product.metadata as Record<string, unknown>) ?? {}) as Record<string, unknown>;
+
+      for (const [slotKey, userValue] of slotEntries) {
+        if (userValue == null || userValue === '') {
+          continue;
+        }
+
+        const directMetadataValue = metadata[slotKey];
+
+        // Với slot liên quan giá, fallback sang base_price để so sánh ngân sách.
+        const comparedProductValue =
+          directMetadataValue != null
+            ? directMetadataValue
+            : this.isPriceLikeKey(slotKey)
+              ? product.base_price
+              : null;
+
+        const point = this.compareSlotAndProductValue(slotKey, userValue, comparedProductValue);
+        if (point > 0) {
+          score += point;
+          matchedKeyCount += 1;
+        }
+      }
+
+      const basePriceNumber = this.toNumber(product.base_price);
+
+      return {
+        ...product,
+        match_score: score,
+        matched_key_count: matchedKeyCount,
+        base_price_number: basePriceNumber,
+      };
+    });
+
+    return ranked
+      .filter((item) => item.match_score > 0)
+      .sort((a, b) => {
+        if (b.match_score !== a.match_score) {
+          return b.match_score - a.match_score;
+        }
+
+        if (b.matched_key_count !== a.matched_key_count) {
+          return b.matched_key_count - a.matched_key_count;
+        }
+
+        const aPrice = a.base_price_number ?? Number.POSITIVE_INFINITY;
+        const bPrice = b.base_price_number ?? Number.POSITIVE_INFINITY;
+        if (aPrice !== bPrice) {
+          return aPrice - bPrice;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+  }
+
   private isUuid(value: string): boolean {
     const uuidRegex =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -282,7 +446,11 @@ export class ChatService {
     const replyText = aiResponseData.reply || 'Xin lỗi, hệ thống AI đang bận.';
     const aiStatus = aiResponseData.status || 'collecting'; // 'collecting' hoặc 'completed'
     const isCompleted = aiStatus === 'completed';
-    const newSlots = aiResponseData.filled_slots || aiResponseData.slots || session.slot_state;
+    const newSlots =
+      aiResponseData.current_slots ||
+      aiResponseData.filled_slots ||
+      aiResponseData.slots ||
+      session.slot_state;
 
     // Giả định AI Service trả về usage. Nếu không, mặc định trừ 10 token/lượt
     const tokensUsed = aiResponseData.usage?.total_tokens || 10;
@@ -312,13 +480,21 @@ export class ChatService {
     // ------------------------------------------------------------------
     let products: any[] = [];
     if (isCompleted) {
-      products = await this.prisma.products.findMany({
+      const activeProducts = await this.prisma.products.findMany({
         where: {
           partner_service_id: session.partner_service_id,
-          status: 'active'
+          status: 'active',
         },
-        take: 5,
       });
+
+      products = this.rankProductsByUserNeed(
+        activeProducts,
+        (newSlots as Record<string, unknown>) ?? {},
+      );
+
+      if (products.length > 5) {
+        products = products.slice(0, 5);
+      }
     }
 
     return {
