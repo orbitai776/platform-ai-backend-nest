@@ -17,6 +17,9 @@ export class Conversation {
     @Prop({ type: String, default: null })
     guest_session_id!: string | null;
 
+    @Prop({ type: String, default: null })
+    ai_session_id!: string | null;
+
     @Prop({ type: Object, default: {} })
     slot_state!: Record<string, any>;
 

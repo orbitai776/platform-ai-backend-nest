@@ -2,10 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { FirebaseService } from '../../services/firebase/firebase.service';
 import { TokenService } from '../../services/token/token.service';
 import { UserUsingService } from '../../services/userUsing/userUsing.service';
+import { UserService } from '../../services/user/user.service';
 import { JwtService } from '../../services/jwt/jwt.service';
 import { JWTPayload } from '../../services/jwt/jwt.interface';
 
 const defaultEnv = process.env.NODE_ENV || 'development';
+const FE_ADMIN_EMAIL = [
+  'orbitaifrontendadmin@gmail.com',
+  'trankyhoathanh.1992@gmail.com',
+  'phongongp121@gmail.com',
+  'hieuh5982@gmail.com',
+  'lecongnguyen213@gmail.com',
+  'luanhhao491@gmail.com',
+  'tinh87973@gmail.com'
+].map(email => email.toLowerCase());
 
 @Injectable()
 export class PublicAuthService {
@@ -13,13 +23,14 @@ export class PublicAuthService {
     private readonly firebaseService: FirebaseService,
     private readonly tokenService: TokenService,
     private readonly userUsingService: UserUsingService,
+    private readonly userService: UserService,
     private readonly jwtService: JwtService,
   ) {}
 
   async auth(input: any): Promise<any> {
     const { idToken } = input;
     const decodedToken = await this.firebaseService.verifyIdToken(idToken);
-
+    
     const tokenCache = await this.tokenService.getToken(
       defaultEnv,
       decodedToken.uid,
@@ -37,18 +48,31 @@ export class PublicAuthService {
       };
     }
 
+    const user = await this.userService.checkAndCreateUser({
+      user_id: decodedToken.uid,
+      name: decodedToken.name,
+      email: decodedToken.email,
+      picture: decodedToken.picture,
+    });
+
+    const roles: string[] = ['user', 'partner'];
+    if (user.data.email && FE_ADMIN_EMAIL.includes(user.data.email.toLowerCase())) {
+      roles.push('admin');
+    }
+
     const jwtPayload: JWTPayload = {
-      uid: decodedToken.uid,
-      roles: ['user'],
-      ...(decodedToken.email && { email: decodedToken.email }),
-      ...(decodedToken.name && { name: decodedToken.name }),
+      uid: user.data.id,
+      roles,
+      ...(user.data.email && { email: user.data.email }),
+      ...(user.data.full_name && { name: user.data.full_name }),
+      ...(user.data.full_name && { full_name: user.data.full_name }),
     };
 
     const customAccessToken = this.jwtService.sign(jwtPayload);
 
     const tokenSaveToCache = {
       env: defaultEnv,
-      userId: decodedToken.uid,
+      userId: user.data.id,
       idToken,
       accessToken: customAccessToken,
       expiresIn: 24 * 3600,

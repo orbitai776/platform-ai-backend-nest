@@ -67,6 +67,9 @@ jobs:
           REDIS_URL: ${{ secrets.REDIS_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           MONGO_URI: ${{ secrets.MONGO_URI }}
+          OLTP_AUTH: ${{ secrets.OLTP_AUTH }}
+          OLTP_URL: ${{ secrets.OLTP_URL }}
+          AI_SERVICE_URL: ${{ secrets.AI_SERVICE_URL }}
         run: |
           # Deploy commands
           ssh -i ~/.ssh/deploy_key ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} << EOF
@@ -98,6 +101,9 @@ jobs:
               -e DATABASE_URL=$DATABASE_URL \
               -e MONGO_URI=$MONGO_URI \
               -e NODE_ENV=$ENV \
+              -e OLTP_AUTH=$OLTP_AUTH \
+              -e OLTP_URL=$OLTP_URL \
+              -e AI_SERVICE_URL=$AI_SERVICE_URL \
               --log-opt max-size=10m \
               --log-opt max-file=3 \
               ghcr.io/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
@@ -105,4 +111,122 @@ jobs:
             echo "✅ Deployment complete!"
             echo "📋 Container status:"
             docker ps | grep $CONTAINER
+          EOF
+  
+  deploy-oracle:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/stg' || github.ref == 'refs/heads/dev'
+    environment: ${{ github.ref_name }}
+    
+    steps:
+      - name: Setup SSH for Oracle
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ORACLE_SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key_oracle
+          chmod 600 ~/.ssh/deploy_key_oracle
+          ssh-keyscan -H ${{ secrets.ORACLE_SERVER_IP }} >> ~/.ssh/known_hosts
+
+      - name: Create K8s YAML file
+        run: |
+          echo "Creating Kubernetes service YAML for ${{ github.ref_name }}..."
+
+          cat > service-ai-backend-nest-${{ github.ref_name }}.yaml << 'YAML'
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: platform-ai-backend-nest-${{ github.ref_name }}
+          spec:
+            type: NodePort
+            selector:
+              app: platform-ai-backend-nest-${{ github.ref_name }}
+            ports:
+            - port: 3000
+              targetPort: 3000
+              nodePort: ${{ vars.ORACLE_PORT }}
+          YAML
+
+          echo "Creating Kubernetes deployment YAML for ${{ github.ref_name }}..."
+
+          cat > deployment-ai-backend-nest-${{ github.ref_name }}.yaml << 'YAML'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: platform-ai-backend-nest-${{ github.ref_name }}
+            namespace: default
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: platform-ai-backend-nest-${{ github.ref_name }}
+            template:
+              metadata:
+                labels:
+                  app: platform-ai-backend-nest-${{ github.ref_name }}
+              spec:
+                containers:
+                - name: app
+                  image: ghcr.io/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+                  imagePullPolicy: IfNotPresent
+                  ports:
+                  - containerPort: 3000
+                  env:
+                  - name: ENV
+                    value: "${{ vars.ENV }}"
+                  - name: PORT
+                    value: "3000"
+                  - name: FIREBASE_PROJECT_ID
+                    value: "${{ secrets.FIREBASE_PROJECT_ID }}"
+                  - name: FIREBASE_CLIENT_EMAIL
+                    value: "${{ secrets.FIREBASE_CLIENT_EMAIL }}"
+                  - name: FIREBASE_PRIVATE_KEY
+                    value: "${{ secrets.FIREBASE_PRIVATE_KEY }}"
+                  - name: JWT_SECRET_KEY
+                    value: "${{ secrets.JWT_SECRET_KEY }}"
+                  - name: JWT_AUDIENCE
+                    value: "${{ secrets.JWT_AUDIENCE }}"
+                  - name: REDIS_URL
+                    value: "${{ secrets.REDIS_URL }}"
+                  - name: JWT_EXPIRES_IN
+                    value: "${{ secrets.JWT_EXPIRES_IN }}"
+                  - name: JWT_ISSUER
+                    value: "${{ secrets.JWT_ISSUER }}"
+                  - name: DATABASE_URL
+                    value: "${{ secrets.DATABASE_URL }}"
+                  - name: MONGO_URI
+                    value: "${{ secrets.MONGO_URI }}"
+                  - name: NODE_ENV
+                    value: "${{ vars.ENV }}"
+                  - name: OLTP_AUTH
+                    value: "${{ secrets.OLTP_AUTH }}"
+                  - name: OLTP_URL
+                    value: "${{ secrets.OLTP_URL }}"
+                  - name: AI_SERVICE_URL
+                    value: "$AI_SERVICE_URL"
+          YAML
+
+      - name: Deploy to Oracle VPS
+        run: |
+          scp -i ~/.ssh/deploy_key_oracle service-ai-backend-nest-${{ github.ref_name }}.yaml ${{ secrets.ORACLE_SERVER_USER }}@${{ secrets.ORACLE_SERVER_IP }}:/tmp/
+          scp -i ~/.ssh/deploy_key_oracle deployment-ai-backend-nest-${{ github.ref_name }}.yaml ${{ secrets.ORACLE_SERVER_USER }}@${{ secrets.ORACLE_SERVER_IP }}:/tmp/
+          
+          ssh -i ~/.ssh/deploy_key_oracle ${{ secrets.ORACLE_SERVER_USER }}@${{ secrets.ORACLE_SERVER_IP }} << EOF
+
+            echo "🔑 Logging to GHCR..."
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            echo "📦 Pulling image..."
+            docker pull ghcr.io/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+
+            echo "🚀 Applying service..."
+            sudo k3s kubectl apply -f /tmp/service-ai-backend-nest-${{ github.ref_name }}.yaml
+
+            echo "🚀 Applying deployment..."
+            sudo k3s kubectl apply -f /tmp/deployment-ai-backend-nest-${{ github.ref_name }}.yaml
+
+            echo "🔄 Restarting rollout..."
+            sudo k3s kubectl rollout restart deployment/platform-ai-backend-nest-${{ github.ref_name }} -n default
+            
+            echo "✅ Deployment status:"
+            sudo k3s kubectl get pods -n default | grep platform-ai-backend-nest-${{ github.ref_name }}
           EOF

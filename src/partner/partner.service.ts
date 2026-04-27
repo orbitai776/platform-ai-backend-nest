@@ -76,10 +76,49 @@ export class PartnerService {
 
   // --- AI Data Services ---
 
+  async listAIServicesAll(statusQuery?: string) {
+    const filterStatus = statusQuery ? statusQuery.split(',') : ['active', 'pause'];
+
+    const services = await this.prisma.services.findMany({
+      where: {
+        status: { in: filterStatus, not: 'disable' }, 
+      },
+    });
+    if (services.length === 0) {
+      throw new HttpException('Không có dịch vụ AI nào', HttpStatus.NOT_FOUND);
+    }
+
+    return { status: 'success', data: services };
+  }
+
   // Gán dịch vụ AI cho đối tác
   async setupAIService(userId: string | null, data: any) {
     const profile = await this.getProfile(userId);
     
+    const existingService = await this.prisma.partner_services.findFirst({
+      where: {
+        partner_id: profile.data.id,
+        service_id: data.service_id,
+      },
+    });
+    if (existingService) {
+      if (existingService.status === 'disable') {
+        const reactivated = await this.prisma.partner_services.update({
+          where: { id: existingService.id },
+          data: { 
+            name: data.name || existingService.name,
+            token_limit: data.token_limit || existingService.token_limit,
+            available_schedule: data.available_schedule || existingService.available_schedule,
+            config: data.config || existingService.config,
+            storage_limit: data.storage_limit || existingService.storage_limit,
+            status: 'active',
+            updated_at: new Date()
+          },
+        });
+        return { status: 'success', message: 'Dịch vụ đã được kích hoạt lại', data: reactivated };
+      }
+      throw new HttpException('Dịch vụ này đã được thiết lập cho tổ chức của bạn', HttpStatus.CONFLICT);
+    }
     
     const ps = await this.prisma.partner_services.create({
       data: {

@@ -1,8 +1,12 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { createOtelSDK } from './services/otlp/otel';
 
 async function bootstrap() {
+  const otelSDK = createOtelSDK('platform-ai-backend');
+  await otelSDK.start();
+
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalPipes(

@@ -9,8 +9,8 @@ WORKDIR /app
 ARG DATABASE_URL=postgresql://placeholder:placeholder@localhost:5432/placeholder
 ENV DATABASE_URL=${DATABASE_URL}
 
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile --ignore-optional
+COPY package.json ./
+RUN yarn install --ignore-optional --production=false
 COPY . .
 RUN yarn build
 
@@ -19,8 +19,8 @@ FROM node:20-alpine AS prod-deps
 
 WORKDIR /app
 
-COPY package.json yarn.lock ./
-RUN yarn install --production --frozen-lockfile --ignore-optional && \
+COPY package.json ./
+RUN yarn install --production --ignore-optional && \
     yarn cache clean && \
     # Xoá packages không cần ở runtime
     rm -rf node_modules/typescript \
@@ -39,19 +39,25 @@ RUN yarn install --production --frozen-lockfile --ignore-optional && \
     find node_modules -name "__tests__" -type d -exec rm -rf {} + 2>/dev/null; \
     true && \
     find node_modules -name "test" -type d -exec rm -rf {} + 2>/dev/null; \
-    true
+    true \
+    find node_modules -name "*.md" -o -name "*.map" -o -name "CHANGELOG*" -delete && \
+    find node_modules -type d \( -name "__tests__" -o -name "test" \) -exec rm -rf {} + 2>/dev/null || true
 
 # Stage 3: Runtime
 FROM node:20-alpine AS runner
 
 # BỔ SUNG: Cài openssl cùng với tini
-RUN apk add --no-cache tini openssl && \
+RUN apk add --no-cache openssl tini && \
     addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001 -G nodejs
 
 WORKDIR /app
 
 # Copy prod deps + prisma generated client từ builder
+# Copy Prisma client đã generate từ builder
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nodejs:nodejs /app/node_modules/@prisma/client ./node_modules/@prisma/client
+
 COPY --from=prod-deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder   --chown=nodejs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder   --chown=nodejs:nodejs /app/dist ./dist
