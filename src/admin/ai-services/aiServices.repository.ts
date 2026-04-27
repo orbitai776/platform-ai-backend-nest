@@ -229,19 +229,22 @@ export class AiServicesRepository {
     `, values);
   }
 
-  async countUsageInPartnerServices(id: string) {
-    return await this.db.queryOne<{ total: number }>(`
-      SELECT COUNT(*)::int AS total
-      FROM partner_services
-      WHERE service_id = $1
-    `, [id]);
-  }
-
-  async delete(id: string) {
+  async softDelete(id: string) {
     return await this.db.queryOne(`
-      DELETE FROM services
+      UPDATE services
+      SET
+        status = 'disabled',
+        updated_at = NOW()
       WHERE id = $1
-      RETURNING id, name, type
+      RETURNING
+        id,
+        name,
+        type,
+        description,
+        default_config AS "defaultConfig",
+        status,
+        created_at AS "createdAt",
+        updated_at AS "updatedAt"
     `, [id]);
   }
 }

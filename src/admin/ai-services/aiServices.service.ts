@@ -70,16 +70,12 @@ export class AiServicesService {
       throw new NotFoundException('AI service not found');
     }
 
-    const usage = await this.repo.countUsageInPartnerServices(id);
-
-    if ((usage?.total ?? 0) > 0) {
-      throw new ConflictException(
-        'This AI service is already used by partner_services, cannot delete',
-      );
+    if (existing.status === 'disabled') {
+      return successResponse(existing, 'AI service is already disabled');
     }
 
-    const deleted = await this.repo.delete(id);
+    const disabled = await this.repo.softDelete(id);
 
-    return successResponse(deleted, 'AI service deleted successfully');
+    return successResponse(disabled, 'AI service disabled successfully');
   }
 }
