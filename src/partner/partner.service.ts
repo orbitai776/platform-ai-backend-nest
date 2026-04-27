@@ -229,5 +229,16 @@ export class PartnerService {
     });
     return { status: 'success', message: 'Đã hủy dịch vụ' };
   }
+  async listActiveAIServices() {
+    const services = await this.prisma.partner_services.findMany({
+      where: {
+        status: 'active',
+      },
+    });
+    if (services.length === 0) {
+      throw new HttpException('Không có dịch vụ AI nào đang hoạt động', HttpStatus.NOT_FOUND);
+    }
+    return { status: 'success', data: services };
+  }
 
 }

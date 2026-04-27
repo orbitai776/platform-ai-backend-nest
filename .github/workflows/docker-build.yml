@@ -101,8 +101,8 @@ jobs:
               -e DATABASE_URL=$DATABASE_URL \
               -e MONGO_URI=$MONGO_URI \
               -e NODE_ENV=$ENV \
-              -e OLTP_AUTH=$OLTP_AUTH \
-              -e OLTP_URL=$OLTP_URL \
+              -e OTLP_AUTH=$OLTP_AUTH \
+              -e OTLP_URL=$OLTP_URL \
               -e AI_SERVICE_URL=$AI_SERVICE_URL \
               --log-opt max-size=10m \
               --log-opt max-file=3 \

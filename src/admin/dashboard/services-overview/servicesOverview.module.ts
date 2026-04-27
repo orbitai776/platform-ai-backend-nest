@@ -3,7 +3,7 @@ import { ServicesOverviewController } from './servicesOverview.controller';
 import { ServicesOverviewService } from './servicesOverview.service';
 import { ServicesOverviewRepository } from './servicesOverview.repository';
 import { InternalJwtGuard } from '../../../guards/internalJwt.guard';
-import { RolesGuard } from '../../../guards/roles.guard';
+import { RolesGuard } from '../../../services/jwt/roles.guard';
 
 @Module({
   controllers: [ServicesOverviewController],

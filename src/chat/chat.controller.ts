@@ -46,7 +46,7 @@ export class ChatController {
   // 1. POST /api/chat/conversations
   @Post()
   async createSession(
-    @Body() createSessionDto: any,
+    @Body() createSessionDto: CreateSessionDto,
     @Req() req: Request,
   ) {
     const userId = this.extractUserId(req);
@@ -78,8 +78,11 @@ export class ChatController {
   @Post(':conversation_id/messages')
   async sendMessage(
     @Param('conversation_id') conversationId: string,
-    @Body() sendMessageDto: any,
+    @Body() sendMessageDto: SendMessageDto,
   ) {
-    return this.chatService.sendMessage(conversationId, sendMessageDto.content);
+    return this.chatService.sendMessage(
+      conversationId,
+      sendMessageDto.content,
+    );
   }
 }

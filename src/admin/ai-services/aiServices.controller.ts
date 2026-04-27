@@ -9,13 +9,13 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { InternalJwtGuard } from '../../guards/internalJwt.guard';
-import { RolesGuard } from '../../guards/roles.guard';
 import { AiServicesService } from './aiServices.service';
-import { CreateAiServiceDto } from './dto/createAiService.dto';
 import { SearchAiServicesDto } from './dto/searchAiServices.dto';
+import { CreateAiServiceDto } from './dto/createAiService.dto';
 import { UpdateAiServiceDto } from './dto/updateAiService.dto';
+import { InternalJwtGuard } from '../../guards/internalJwt.guard';
+import { Roles } from '../../services/jwt/roles.decorator';
+import { RolesGuard } from '../../services/jwt/roles.guard';
 
 @Controller('v1/admin/services')
 @UseGuards(InternalJwtGuard, RolesGuard)
