@@ -4,9 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { listResponse, successResponse } from '../../common/response/adminResponse.util';
 import { AiServicesRepository } from './aiServices.repository';
-import { SearchAiServicesDto } from './dto/searchAiServices.dto';
 import { CreateAiServiceDto } from './dto/createAiService.dto';
+import { SearchAiServicesDto } from './dto/searchAiServices.dto';
 import { UpdateAiServiceDto } from './dto/updateAiService.dto';
 
 @Injectable()
@@ -14,7 +15,8 @@ export class AiServicesService {
   constructor(private readonly repo: AiServicesRepository) {}
 
   async findMany(dto: SearchAiServicesDto) {
-    return await this.repo.findMany(dto);
+    const result = await this.repo.findMany(dto);
+    return listResponse(result.items, result.pagination, 'Admin AI services fetched successfully');
   }
 
   async findOne(id: string) {
@@ -24,19 +26,18 @@ export class AiServicesService {
       throw new NotFoundException('AI service not found');
     }
 
-    return item;
+    return successResponse(item, 'Admin AI service detail fetched successfully');
   }
 
   async create(dto: CreateAiServiceDto) {
     const duplicate = await this.repo.findDuplicate(dto.name, dto.type);
 
     if (duplicate) {
-      throw new ConflictException(
-        'AI service with the same name and type already exists',
-      );
+      throw new ConflictException('AI service with the same name and type already exists');
     }
 
-    return await this.repo.create(dto);
+    const created = await this.repo.create(dto);
+    return successResponse(created, 'AI service created successfully');
   }
 
   async update(id: string, dto: UpdateAiServiceDto) {
@@ -52,15 +53,14 @@ export class AiServicesService {
 
     const nextName = dto.name ?? existing.name;
     const nextType = dto.type ?? existing.type;
-
     const duplicate = await this.repo.findDuplicate(nextName, nextType, id);
+
     if (duplicate) {
-      throw new ConflictException(
-        'Another AI service with the same name and type already exists',
-      );
+      throw new ConflictException('Another AI service with the same name and type already exists');
     }
 
-    return await this.repo.update(id, dto);
+    const updated = await this.repo.update(id, dto);
+    return successResponse(updated, 'AI service updated successfully');
   }
 
   async remove(id: string) {
@@ -70,19 +70,12 @@ export class AiServicesService {
       throw new NotFoundException('AI service not found');
     }
 
-    const usage = await this.repo.countUsageInPartnerServices(id);
-
-    if ((usage?.total ?? 0) > 0) {
-      throw new ConflictException(
-        'This AI service is already used by partner_services, cannot delete',
-      );
+    if (existing.status === 'disabled') {
+      return successResponse(existing, 'AI service is already disabled');
     }
 
-    const deleted = await this.repo.delete(id);
+    const disabled = await this.repo.softDelete(id);
 
-    return {
-      success: true,
-      deleted,
-    };
+    return successResponse(disabled, 'AI service disabled successfully');
   }
 }
