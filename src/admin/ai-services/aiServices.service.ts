@@ -70,12 +70,12 @@ export class AiServicesService {
       throw new NotFoundException('AI service not found');
     }
 
-    if (existing.status === 'disabled') {
+    if (existing.status === 'disable') {
       return successResponse(existing, 'AI service is already disabled');
     }
 
     const disabled = await this.repo.softDelete(id);
 
-    return successResponse(disabled, 'AI service disabled successfully');
+    return successResponse(disabled, 'AI service disabled for new registration and renewal successfully');
   }
 }

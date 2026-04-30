@@ -42,7 +42,7 @@ export class PartnerService {
     if (!userId) throw new HttpException('Unauthorized', HttpStatus.UNAUTHORIZED);
 
     let partner: any;
-    
+
     try {
       console.log('Fetching partner profile for userId:', userId);
       partner = await this.prisma.partners.findFirst({
@@ -81,7 +81,7 @@ export class PartnerService {
 
     const services = await this.prisma.services.findMany({
       where: {
-        status: { in: filterStatus, not: 'disable' }, 
+        status: { in: filterStatus, not: 'disable' },
       },
     });
     if (services.length === 0) {
@@ -94,7 +94,7 @@ export class PartnerService {
   // Gán dịch vụ AI cho đối tác
   async setupAIService(userId: string | null, data: any) {
     const profile = await this.getProfile(userId);
-    
+
     const existingService = await this.prisma.partner_services.findFirst({
       where: {
         partner_id: profile.data.id,
@@ -105,7 +105,7 @@ export class PartnerService {
       if (existingService.status === 'disable') {
         const reactivated = await this.prisma.partner_services.update({
           where: { id: existingService.id },
-          data: { 
+          data: {
             name: data.name || existingService.name,
             token_limit: data.token_limit || existingService.token_limit,
             available_schedule: data.available_schedule || existingService.available_schedule,
@@ -119,7 +119,7 @@ export class PartnerService {
       }
       throw new HttpException('Dịch vụ này đã được thiết lập cho tổ chức của bạn', HttpStatus.CONFLICT);
     }
-    
+
     const ps = await this.prisma.partner_services.create({
       data: {
         id: uuidv4(),
@@ -128,18 +128,19 @@ export class PartnerService {
         name: data.name || 'Chatbot AI',
         token_limit: data.token_limit || 10000,
         token_used: 0,
-        available_schedule: data.available_schedule || {"monday":{"open":"08:00","close":"22:00"},
-                                                        "tuesday":{"open":"08:00","close":"22:00"},
-                                                        "saturday":{"open":"09:00","close":"21:00"},
-                                                        "sunday":{"open":"09:00","close":"20:00"}
-                                                      },
+        available_schedule: data.available_schedule || {
+          "monday": { "open": "08:00", "close": "22:00" },
+          "tuesday": { "open": "08:00", "close": "22:00" },
+          "saturday": { "open": "09:00", "close": "21:00" },
+          "sunday": { "open": "09:00", "close": "20:00" }
+        },
         config: data.config || {
-                                  "language": "vi",
-                                  "max_turns": 20,
-                                  "rag_top_k": 5,
-                                  "temperature": 0.7,
-                                  "system_prompt": "Bạn là trợ lý AI tư vấn du lịch chuyên nghiệp."
-                                },
+          "language": "vi",
+          "max_turns": 20,
+          "rag_top_k": 5,
+          "temperature": 0.7,
+          "system_prompt": "Bạn là trợ lý AI tư vấn du lịch chuyên nghiệp."
+        },
         storage_limit: data.storage_limit || 500,
         status: 'active',
         created_at: new Date(),
@@ -157,7 +158,7 @@ export class PartnerService {
     const services = await this.prisma.partner_services.findMany({
       where: {
         partner_id: profile.data.id,
-        status: { in: filterStatus, not: 'disable' }, 
+        status: { in: filterStatus, not: 'disable' },
       },
     });
     if (services.length === 0) {
@@ -168,7 +169,7 @@ export class PartnerService {
   }
 
   async getAIService(userId: string | null, id: string) {
-    
+
     if (!this.isUuid(id)) { //
       throw new HttpException('ID dịch vụ không hợp lệ', HttpStatus.BAD_REQUEST);
     }
@@ -178,8 +179,8 @@ export class PartnerService {
       where: {
         id: id,
         partner_id: profile.data.id,
-        status: { not: 'disable' }    
-      },  
+        status: { not: 'disable' }
+      },
     });
     if (!service) {
       throw new HttpException('Không tìm thấy dịch vụ AI hoặc bạn không có quyền truy cập', HttpStatus.NOT_FOUND);
@@ -188,7 +189,7 @@ export class PartnerService {
     return { status: 'success', data: service };
   }
 
- async updateAIService(userId: string | null, id: string, data: any) {
+  async updateAIService(userId: string | null, id: string, data: any) {
     if (!this.isUuid(id)) {
       throw new HttpException('ID dịch vụ không hợp lệ', HttpStatus.BAD_REQUEST);
     }
@@ -212,14 +213,14 @@ export class PartnerService {
         storage_limit: data.storage_limit,
         available_schedule: data.available_schedule,
         config: data.config,
-        status: data.status ,
+        status: data.status,
         updated_at: new Date(),
       },
     });
 
     return { status: 'success', data: updated };
   }
-    
+
 
   // Chuyển status thành disable
   async disableAIService(id: string) {
