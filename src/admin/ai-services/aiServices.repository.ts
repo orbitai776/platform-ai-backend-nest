@@ -233,7 +233,7 @@ export class AiServicesRepository {
     return await this.db.queryOne(`
       UPDATE services
       SET
-        status = 'disabled',
+        status = 'disable',
         updated_at = NOW()
       WHERE id = $1
       RETURNING
