@@ -12,7 +12,7 @@ import { UpdateAiServiceDto } from './dto/updateAiService.dto';
 
 @Injectable()
 export class AiServicesService {
-  constructor(private readonly repo: AiServicesRepository) {}
+  constructor(private readonly repo: AiServicesRepository) { }
 
   async findMany(dto: SearchAiServicesDto) {
     const result = await this.repo.findMany(dto);
@@ -72,6 +72,11 @@ export class AiServicesService {
 
     if (existing.status === 'disable') {
       return successResponse(existing, 'AI service is already disabled');
+    }
+
+    const hasActivePartners = await this.repo.checkActivePartners(id);
+    if (hasActivePartners) {
+      throw new ConflictException('Cannot disable this service because there are partners using it');
     }
 
     const disabled = await this.repo.softDelete(id);
