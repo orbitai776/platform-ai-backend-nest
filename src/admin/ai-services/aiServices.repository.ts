@@ -229,6 +229,15 @@ export class AiServicesRepository {
     `, values);
   }
 
+  async checkActivePartners(serviceId: string): Promise<boolean> {
+    const result = await this.db.queryOne<{ count: number }>(`
+      SELECT COUNT(*)::int AS count
+      FROM partner_services
+      WHERE service_id = $1 AND status != 'disable'
+    `, [serviceId]);
+    return (result?.count ?? 0) > 0;
+  }
+
   async softDelete(id: string) {
     return await this.db.queryOne(`
       UPDATE services
