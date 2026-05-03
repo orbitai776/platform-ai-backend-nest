@@ -13,7 +13,7 @@ import { CommonErrorHandlerMiddleware } from '../../common/common-error-handler.
 import { PublicAuthService } from './publicAuth.service';
 import { trace } from '@opentelemetry/api';
 
-@Controller('public/auth')
+@Controller(['public/auth', 'v1/api/auth'])
 export class PublicAuthController {
   constructor(
     private readonly publicAuthService: PublicAuthService,
@@ -49,6 +49,33 @@ export class PublicAuthController {
       return res.json({
         message: 'Authentication successful, token set in cookies',
       });
+    } catch (error) {
+      this.errorHandler.checkError(error);
+    }
+  }
+
+  @Post('/forgot-password')
+  async forgotPassword(@Body() input: any) {
+    try {
+      return await this.publicAuthService.forgotPassword(input);
+    } catch (error) {
+      this.errorHandler.checkError(error);
+    }
+  }
+
+  @Post('/verify-reset-code')
+  async verifyPasswordResetCode(@Body() input: any) {
+    try {
+      return await this.publicAuthService.verifyPasswordResetCode(input);
+    } catch (error) {
+      this.errorHandler.checkError(error);
+    }
+  }
+
+  @Post('/reset-password')
+  async resetPassword(@Body() input: any) {
+    try {
+      return await this.publicAuthService.resetPassword(input);
     } catch (error) {
       this.errorHandler.checkError(error);
     }
