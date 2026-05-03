@@ -7,6 +7,7 @@ import { JwtModule } from '../../services/jwt/jwt.module';
 import { TokenModule } from '../../services/token/token.module';
 import { UserUsingModule } from '../../services/userUsing/userUsing.module';
 import { UserModule } from '../../services/user/user.module';
+import { RedisModule } from '../../services/redis/redis.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { UserModule } from '../../services/user/user.module';
     UserUsingModule,
     UserModule,
     JwtModule,
+    RedisModule,
   ],
   controllers: [PublicAuthController],
   providers: [
